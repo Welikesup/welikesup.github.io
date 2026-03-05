@@ -1,429 +1,189 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Suivi des ventes</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Suivi KPI</title>
 
 <style>
+
 body{
-font-family:'Inter',sans-serif;
-background:#0f0f0f;
-color:white;
+font-family:Arial;
 margin:0;
+background:#f2f2f2;
+padding:10px;
 }
 
-.header{
-background:#000;
-padding:20px;
+h1{
 text-align:center;
-box-shadow:0 5px 20px rgba(0,0,0,0.6);
 }
 
-.header img{height:60px;}
-
-.header h1{
-margin:10px 0 0 0;
-font-weight:600;
-font-size:22px;
-letter-spacing:1px;
-color:#ff7a00;
+.container{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:15px;
+max-width:1200px;
+margin:auto;
 }
 
-.container{margin-top:60px;text-align:center;}
-
-input{
-padding:8px;
-width:80px;
-border-radius:8px;
-border:none;
-margin:4px;
+.card{
+background:white;
+border-radius:10px;
+padding:15px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
 text-align:center;
+}
+
+.kpi{
+font-size:28px;
+margin:10px 0;
 }
 
 button{
-padding:10px 15px;
-margin-top:10px;
+width:100%;
+padding:12px;
+margin-top:8px;
 border:none;
 border-radius:8px;
-font-weight:600;
+font-size:16px;
 cursor:pointer;
 }
 
-button.validate{
-background:white;
-color:black;
-}
-
-button.cancel{
-background:#222;
+.validate{
+background:#4CAF50;
 color:white;
-margin-left:8px;
 }
 
-button.cancel:disabled{
-opacity:0.3;
+.cancel{
+background:#f44336;
+color:white;
+}
+
+.reset{
+background:#555;
+color:white;
+margin-top:10px;
+}
+
+button:disabled{
+opacity:0.4;
 cursor:not-allowed;
 }
 
-.hidden{display:none;}
-
-#welcome{text-align:center;margin-top:30px;font-weight:600;}
-
-#items{
-display:flex;
-flex-wrap:wrap;
-justify-content:center;
-padding:30px;
-}
-
-.item{
-background:#ff7a00;
-padding:20px;
-margin:15px;
-border-radius:18px;
-width:260px;
-box-shadow:0 10px 25px rgba(0,0,0,0.4);
-transition:0.2s;
-}
-
-.item:hover{transform:translateY(-6px);}
-
-.item.success{
-background:#1e7e34;
-animation:pulse 1.2s ease;
-}
-
-@keyframes pulse{
-0%{transform:scale(1);}
-50%{transform:scale(1.06);}
-100%{transform:scale(1);}
-}
-
-.progress-container{
-background:rgba(255,255,255,0.3);
-border-radius:20px;
-height:10px;
-margin-top:10px;
-overflow:hidden;
-}
-
-.progress-bar{
-height:100%;
-background:white;
-width:0%;
-transition:width 0.5s ease;
-}
-
-.item.success .progress-bar{background:#00ff88;}
-
-.personal-line{font-size:14px;margin-top:10px;}
-
-.admin-panel{
-background:#1c1c1c;
-padding:20px;
-margin:30px;
-border-radius:15px;
-}
-
-#toast{
-position:fixed;
-bottom:30px;
-left:50%;
-transform:translateX(-50%);
-background:#1e7e34;
-padding:12px 20px;
-border-radius:10px;
-font-weight:600;
-display:none;
-}
-
 @media (max-width:768px){
-.item{width:90%;}
+
+h1{
+font-size:22px;
 }
+
+button{
+font-size:18px;
+padding:14px;
+}
+
+}
+
 </style>
+
 </head>
+
 <body>
 
-<div class="header">
-<img src="logo-stn.png">
 <h1>Suivi des ventes</h1>
+
+<div class="container">
+
+<div class="card">
+<h2>Mariama</h2>
+
+<div>KPI 1</div>
+<div class="kpi" id="mariama_kpi1">0</div>
+
+<button class="validate" onclick="validateSale('mariama','kpi1')">Valider</button>
+<button class="cancel" id="cancel_mariama_kpi1" onclick="cancelSale('mariama','kpi1')" disabled>Annuler</button>
+
+<hr>
+
+<div>KPI 2</div>
+<div class="kpi" id="mariama_kpi2">0</div>
+
+<button class="validate" onclick="validateSale('mariama','kpi2')">Valider</button>
+<button class="cancel" id="cancel_mariama_kpi2" onclick="cancelSale('mariama','kpi2')" disabled>Annuler</button>
+
+<button class="reset" onclick="resetProfile('mariama')">Réinitialiser</button>
+
 </div>
 
-<div id="login" class="container">
-<h2>Connexion</h2>
-<input type="password" id="password" placeholder="Mot de passe">
-<br>
-<button onclick="login()">Entrer</button>
-<p id="error" style="color:red;"></p>
 </div>
 
-<div id="app" class="hidden">
+<script>
 
-<h2 id="welcome"></h2>
-
-<div id="adminPanel" class="admin-panel hidden">
-<h3>Administration</h3>
-<div id="adminInputs"></div>
-<button onclick="saveObjectives()">Valider tous les objectifs</button>
-<button onclick="resetWeekly()">Réinitialiser tous les objectifs</button>
-</div>
-
-<div id="items"></div>
-
-</div>
-
-<div id="toast">Vente enregistrée ✔</div>
-
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-const firebaseConfig={
-apiKey:"AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
-authDomain:"compteur-stn.firebaseapp.com",
-projectId:"compteur-stn",
-storageBucket:"compteur-stn.firebasestorage.app",
-messagingSenderId:"661197584248",
-appId:"1:661197584248:web:1dc33900c4422df4c53a8d"
-};
-
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
-const ref=doc(db,"global","objectifs");
-
-const passwords={
-"medine":"Le Havre",
-"dembele":"Evreux",
-"johannes":"Mondeville",
-"orelsan":"Caen",
-"lincheneau":"La Glacerie",
-"riles":"Rouen",
-"secteurstn":"Mariama"
-};
-
-const itemsList=["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
-
-let currentUser="";
-let globalData={};
-let initialObjectives={};
-let cancelTimers={};
-
-function showToast(){
-const t=document.getElementById("toast");
-t.style.display="block";
-setTimeout(()=>t.style.display="none",1200);
-}
-
-window.login=async function(){
-
-const pass=document.getElementById("password").value;
-
-if(passwords[pass]){
-
-currentUser=passwords[pass];
-
-document.getElementById("login").classList.add("hidden");
-document.getElementById("app").classList.remove("hidden");
-
-document.getElementById("welcome").innerText="Bienvenue "+currentUser;
-
-if(currentUser==="Mariama"){
-document.getElementById("adminPanel").classList.remove("hidden");
-}
-
-await initData();
-
-}else{
-document.getElementById("error").innerText="Mot de passe incorrect";
-}
-
-};
-
-async function initData(){
-
-const snap=await getDoc(ref);
-
-if(!snap.exists()){
-
-let data={personal:{}};
-
-itemsList.forEach(i=>data[i]=0);
-
-Object.values(passwords).forEach(u=>{
-data.personal[u]={};
-itemsList.forEach(i=>data.personal[u][i]=0);
-});
-
-await setDoc(ref,data);
-
-}
-
-onSnapshot(ref,(docSnap)=>{
-
-globalData=docSnap.data();
-
-itemsList.forEach(i=>{
-if(initialObjectives[i]===undefined){
-initialObjectives[i]=globalData[i];
-}
-});
-
-display();
-
-if(currentUser==="Mariama") renderAdmin();
-
-});
-
-}
-
-function display(){
-
-const container=document.getElementById("items");
-container.innerHTML="";
-
-itemsList.forEach(item=>{
-
-const remaining=globalData[item]||0;
-const initial=initialObjectives[item]||remaining;
-const percent=initial>0?((initial-remaining)/initial)*100:100;
-const personalValue=globalData.personal?.[currentUser]?.[item]||0;
-
-const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
-
-const div=document.createElement("div");
-div.className="item";
-
-if(remaining<=0) div.classList.add("success");
-
-div.innerHTML=`
-
-<h3>${item}</h3>
-
-<p>Objectif restant: <strong>${remaining}</strong></p>
-
-<div class="progress-container">
-<div class="progress-bar" style="width:${percent}%"></div>
-</div>
-
-<div class="personal-line">
-Mes ventes aujourd'hui : <strong>${personalValue}</strong>
-</div>
-
-<button class="validate" onclick="decrement('${item}')">
-Valider une vente
-</button>
-
-<button class="cancel"
-${!cancelAllowed?"disabled":""}
-onclick="cancelSale('${item}')">
-Annuler
-</button>
-
-`;
-
-container.appendChild(div);
-
-});
-
-}
-
-window.decrement=async function(item){
-
-if(!confirm("Confirmer cette vente ?")) return;
-
-const personalValue=globalData.personal[currentUser][item]||0;
-
-cancelTimers[item]=Date.now()+20000;
-
-await setDoc(ref,{
-
-[item]:globalData[item]-1,
-
-personal:{
-...globalData.personal,
-[currentUser]:{
-...globalData.personal[currentUser],
-[item]:personalValue+1
+let data={
+mariama:{
+kpi1:0,
+kpi2:0
 }
 }
 
-},{merge:true});
+let timers={}
 
-showToast();
-display();
+function validateSale(user,kpi){
 
-};
+data[user][kpi]++
 
-window.cancelSale=async function(item){
+updateDisplay(user,kpi)
 
-if(!cancelTimers[item] || Date.now()>cancelTimers[item]) return;
+let cancelBtn=document.getElementById("cancel_"+user+"_"+kpi)
 
-const personalValue=globalData.personal[currentUser][item]||0;
+cancelBtn.disabled=false
 
-await setDoc(ref,{
+clearTimeout(timers[user+"_"+kpi])
 
-[item]:globalData[item]+1,
+timers[user+"_"+kpi]=setTimeout(()=>{
 
-personal:{
-...globalData.personal,
-[currentUser]:{
-...globalData.personal[currentUser],
-[item]:personalValue-1
-}
-}
+cancelBtn.disabled=true
 
-},{merge:true});
-
-cancelTimers[item]=null;
-
-};
-
-function renderAdmin(){
-
-const div=document.getElementById("adminInputs");
-div.innerHTML="";
-
-itemsList.forEach(item=>{
-div.innerHTML+=`
-<div>
-${item} :
-<input type="number" id="obj-${item}" value="${globalData[item]||0}">
-</div>
-`;
-});
+},20000)
 
 }
 
-window.saveObjectives=async function(){
+function cancelSale(user,kpi){
 
-let update={};
+if(data[user][kpi]>0){
 
-itemsList.forEach(item=>{
-update[item]=parseInt(document.getElementById("obj-"+item).value)||0;
-initialObjectives[item]=update[item];
-});
+data[user][kpi]--
 
-await setDoc(ref,update,{merge:true});
+updateDisplay(user,kpi)
 
-};
+}
 
-window.resetWeekly=async function(){
+document.getElementById("cancel_"+user+"_"+kpi).disabled=true
 
-if(!confirm("Réinitialiser tous les objectifs ?")) return;
+}
 
-let reset={};
+function updateDisplay(user,kpi){
 
-itemsList.forEach(item=>{
-reset[item]=0;
-});
+document.getElementById(user+"_"+kpi).innerText=data[user][kpi]
 
-await setDoc(ref,reset,{merge:true});
+}
 
-};
+function resetProfile(user){
+
+for(let kpi in data[user]){
+
+data[user][kpi]=0
+
+updateDisplay(user,kpi)
+
+document.getElementById("cancel_"+user+"_"+kpi).disabled=true
+
+}
+
+}
 
 </script>
+
 </body>
 </html>
