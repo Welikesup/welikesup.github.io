@@ -51,8 +51,16 @@ button {
   cursor: pointer;
 }
 
-button:not(.disabled) { background: #ff7a00; color: white; }
-button.disabled { background: #444; color: #999; cursor: not-allowed; }
+button.validate {
+  background: white;
+  color: black;
+}
+
+button.cancel {
+  background:#222;
+  color:white;
+  margin-left:8px;
+}
 
 .hidden { display:none; }
 
@@ -77,7 +85,16 @@ button.disabled { background: #444; color: #999; cursor: not-allowed; }
 
 .item:hover { transform: translateY(-6px); }
 
-.item.success { background: #1e7e34; }
+.item.success {
+  background: #1e7e34;
+  animation: pulse 1.2s ease;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
 
 .progress-container {
   background: rgba(255,255,255,0.3);
@@ -245,28 +262,37 @@ function display(){
 
     const div=document.createElement("div");
     div.className="item";
-    if(remaining===0) div.classList.add("success");
+    if(remaining<=0) div.classList.add("success");
 
     div.innerHTML=`
       <h3>${item}</h3>
       <p>Objectif restant: <strong>${remaining}</strong></p>
+
       <div class="progress-container">
         <div class="progress-bar" style="width:${percent}%"></div>
       </div>
+
       <div class="personal-line">
         Mes ventes aujourd'hui : <strong>${personalValue}</strong>
       </div>
-      <button ${remaining===0?"class='disabled' disabled":""}
-        onclick="decrement('${item}')">
-        ${remaining===0?"Objectif atteint":"Valider une vente"}
+
+      <button class="validate" onclick="decrement('${item}')">
+        Valider une vente
+      </button>
+
+      <button class="cancel" onclick="cancelSale('${item}')">
+        Annuler
       </button>
     `;
+
     container.appendChild(div);
   });
 }
 
 window.decrement=async function(item){
-  if(globalData[item]<=0) return;
+
+  if(!confirm("Confirmer cette vente ?")) return;
+
   const personalValue=globalData.personal[currentUser][item]||0;
 
   await setDoc(ref,{
@@ -276,6 +302,27 @@ window.decrement=async function(item){
       [currentUser]:{
         ...globalData.personal[currentUser],
         [item]:personalValue+1
+      }
+    }
+  },{merge:true});
+}
+
+window.cancelSale=async function(item){
+
+  const personalValue=globalData.personal[currentUser][item]||0;
+
+  if(personalValue<=0){
+    alert("Aucune vente à annuler");
+    return;
+  }
+
+  await setDoc(ref,{
+    [item]:globalData[item]+1,
+    personal:{
+      ...globalData.personal,
+      [currentUser]:{
+        ...globalData.personal[currentUser],
+        [item]:personalValue-1
       }
     }
   },{merge:true});
@@ -314,4 +361,3 @@ window.resetWeekly=async function(){
 </script>
 </body>
 </html>
- 
