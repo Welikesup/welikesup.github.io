@@ -2,30 +2,17 @@
 <html>
 <head>
 <meta charset="UTF-8">
-
-<!-- RESPONSIVE IPHONE / TABLETTE -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Suivi des ventes</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
-
-*{
-box-sizing:border-box;
-}
-
 body {
   font-family: 'Inter', sans-serif;
   background: #0f0f0f;
   color: white;
   margin: 0;
-}
-
-img{
-max-width:100%;
-height:auto;
 }
 
 .header {
@@ -36,7 +23,6 @@ height:auto;
 }
 
 .header img { height: 60px; }
-
 .header h1 {
   margin: 10px 0 0 0;
   font-weight: 600;
@@ -45,11 +31,7 @@ height:auto;
   color: #ff7a00;
 }
 
-.container { 
-  margin-top: 60px; 
-  text-align: center; 
-  padding:10px;
-}
+.container { margin-top: 60px; text-align: center; padding:10px; }
 
 input {
   padding: 8px;
@@ -70,19 +52,15 @@ button {
   max-width:100%;
 }
 
-button:not(.disabled) { background: #ff7a00; color: white; }
-button.disabled { background: #444; color: #999; cursor: not-allowed; }
+button.validate { background:white; color:black; }
+button.cancel { background:#222; color:white; margin-left:8px; }
+button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
 
 .hidden { display:none; }
 
 #welcome { text-align: center; margin-top: 30px; font-weight: 600; }
 
-#items {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  padding: 30px;
-}
+#items { display:flex; flex-wrap: wrap; justify-content:center; padding:30px; }
 
 .item {
   background: #ff7a00;
@@ -95,8 +73,9 @@ button.disabled { background: #444; color: #999; cursor: not-allowed; }
 }
 
 .item:hover { transform: translateY(-6px); }
+.item.success { background: #1e7e34; animation: pulse 1.2s ease; }
 
-.item.success { background: #1e7e34; }
+@keyframes pulse { 0%{transform:scale(1);} 50%{transform:scale(1.06);} 100%{transform:scale(1);} }
 
 .progress-container {
   background: rgba(255,255,255,0.3);
@@ -124,25 +103,12 @@ button.disabled { background: #444; color: #999; cursor: not-allowed; }
   border-radius:15px;
 }
 
-/* RESPONSIVE */
-
-@media (max-width: 768px) {
-
-  .item { 
-    width: 90%; 
-  }
-
-  button{
-    font-size:18px;
-    padding:14px;
-  }
-
-  .container{
-    margin-top:40px;
-  }
-
+/* Responsive */
+@media (max-width:768px){
+  .item { width: 90%; }
+  button { font-size:18px; padding:14px; }
+  .container{ margin-top:40px; }
 }
-
 </style>
 </head>
 
@@ -207,6 +173,7 @@ const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","C
 let currentUser="";
 let globalData={};
 let initialObjectives={};
+let cancelTimers={};
 
 function getToday(){
   const d=new Date();
@@ -243,8 +210,6 @@ async function initData(){
     await setDoc(ref,data);
   }
 
-  await checkDailyReset();
-
   onSnapshot(ref,(docSnap)=>{
     globalData=docSnap.data();
     itemsList.forEach(i=>{
@@ -257,19 +222,6 @@ async function initData(){
   });
 }
 
-async function checkDailyReset(){
-  const snap=await getDoc(ref);
-  const data=snap.data();
-  if(data.lastPersonalReset!==getToday()){
-    let resetPersonal={};
-    Object.values(passwords).forEach(u=>{
-      resetPersonal[u]={};
-      itemsList.forEach(i=>resetPersonal[u][i]=0);
-    });
-    await setDoc(ref,{personal:resetPersonal,lastPersonalReset:getToday()},{merge:true});
-  }
-}
-
 function display(){
   const container=document.getElementById("items");
   container.innerHTML="";
@@ -280,9 +232,11 @@ function display(){
     const percent=initial>0?((initial-remaining)/initial)*100:100;
     const personalValue=globalData.personal?.[currentUser]?.[item]||0;
 
+    const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
+
     const div=document.createElement("div");
     div.className="item";
-    if(remaining===0) div.classList.add("success");
+    if(remaining<=0) div.classList.add("success");
 
     div.innerHTML=`
       <h3>${item}</h3>
@@ -293,16 +247,19 @@ function display(){
       <div class="personal-line">
         Mes ventes aujourd'hui : <strong>${personalValue}</strong>
       </div>
-      <button onclick="decrement('${item}')">
-        Valider une vente
-      </button>
+      <button class="validate" onclick="decrement('${item}')">Valider une vente</button>
+      <button class="cancel" ${!cancelAllowed?"disabled":""} onclick="cancelSale('${item}')">Annuler</button>
     `;
+
     container.appendChild(div);
   });
 }
 
 window.decrement=async function(item){
+  if(!confirm("Confirmer cette vente ?")) return;
+
   const personalValue=globalData.personal[currentUser][item]||0;
+  cancelTimers[item]=Date.now()+20000;
 
   await setDoc(ref,{
     [item]:(globalData[item]||0)-1,
@@ -314,6 +271,28 @@ window.decrement=async function(item){
       }
     }
   },{merge:true});
+
+  display();
+}
+
+window.cancelSale=async function(item){
+  if(!cancelTimers[item] || Date.now()>cancelTimers[item]) return;
+
+  const personalValue=globalData.personal[currentUser][item]||0;
+
+  await setDoc(ref,{
+    [item]:(globalData[item]||0)+1,
+    personal:{
+      ...globalData.personal,
+      [currentUser]:{
+        ...globalData.personal[currentUser],
+        [item]:personalValue-1
+      }
+    }
+  },{merge:true});
+
+  cancelTimers[item]=null;
+  display();
 }
 
 function renderAdmin(){
@@ -339,15 +318,16 @@ window.saveObjectives=async function(){
 }
 
 window.resetWeekly=async function(){
-  if(!confirm("Reset hebdomadaire des objectifs ?")) return;
+  if(!confirm("Réinitialiser tous les objectifs ?")) return;
+
   let reset={};
   itemsList.forEach(item=>{
-    reset[item]=initialObjectives[item]||0;
+    reset[item]=0; // tout remet à 0 pour Mariama
   });
+
   await setDoc(ref,reset,{merge:true});
 }
 
 </script>
-
 </body>
 </html>
