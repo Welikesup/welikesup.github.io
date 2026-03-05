@@ -1,186 +1,350 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
-
 <meta charset="UTF-8">
+
+<!-- RESPONSIVE IPHONE / TABLETTE -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Suivi KPI</title>
+<title>Suivi des ventes</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
 
-body{
-font-family:Arial;
-margin:0;
-background:#f2f2f2;
-padding:10px;
+*{
+box-sizing:border-box;
 }
 
-h1{
-text-align:center;
+body {
+  font-family: 'Inter', sans-serif;
+  background: #0f0f0f;
+  color: white;
+  margin: 0;
 }
 
-.container{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-gap:15px;
-max-width:1200px;
-margin:auto;
+img{
+max-width:100%;
+height:auto;
 }
 
-.card{
-background:white;
-border-radius:10px;
-padding:15px;
-box-shadow:0 2px 6px rgba(0,0,0,0.1);
-text-align:center;
+.header {
+  background: #000;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.6);
 }
 
-.kpi{
-font-size:28px;
-margin:10px 0;
+.header img { height: 60px; }
+
+.header h1 {
+  margin: 10px 0 0 0;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: 1px;
+  color: #ff7a00;
 }
 
-button{
-width:100%;
-padding:12px;
-margin-top:8px;
-border:none;
-border-radius:8px;
-font-size:16px;
-cursor:pointer;
+.container { 
+  margin-top: 60px; 
+  text-align: center; 
+  padding:10px;
 }
 
-.validate{
-background:#4CAF50;
-color:white;
+input {
+  padding: 8px;
+  width: 80px;
+  border-radius: 8px;
+  border: none;
+  margin: 4px;
+  text-align: center;
 }
 
-.cancel{
-background:#f44336;
-color:white;
+button {
+  padding: 10px 15px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  max-width:100%;
 }
 
-.reset{
-background:#555;
-color:white;
-margin-top:10px;
+button:not(.disabled) { background: #ff7a00; color: white; }
+button.disabled { background: #444; color: #999; cursor: not-allowed; }
+
+.hidden { display:none; }
+
+#welcome { text-align: center; margin-top: 30px; font-weight: 600; }
+
+#items {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 30px;
 }
 
-button:disabled{
-opacity:0.4;
-cursor:not-allowed;
+.item {
+  background: #ff7a00;
+  padding: 20px;
+  margin: 15px;
+  border-radius: 18px;
+  width: 260px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+  transition: 0.2s;
 }
 
-@media (max-width:768px){
+.item:hover { transform: translateY(-6px); }
 
-h1{
-font-size:22px;
+.item.success { background: #1e7e34; }
+
+.progress-container {
+  background: rgba(255,255,255,0.3);
+  border-radius: 20px;
+  height: 10px;
+  margin-top: 10px;
+  overflow: hidden;
 }
 
-button{
-font-size:18px;
-padding:14px;
+.progress-bar {
+  height: 100%;
+  background: white;
+  width: 0%;
+  transition: width 0.5s ease;
 }
+
+.item.success .progress-bar { background: #00ff88; }
+
+.personal-line { font-size: 14px; margin-top: 10px; }
+
+.admin-panel {
+  background:#1c1c1c;
+  padding:20px;
+  margin:30px;
+  border-radius:15px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 768px) {
+
+  .item { 
+    width: 90%; 
+  }
+
+  button{
+    font-size:18px;
+    padding:14px;
+  }
+
+  .container{
+    margin-top:40px;
+  }
 
 }
 
 </style>
-
 </head>
 
 <body>
 
-<h1>Suivi des ventes</h1>
-
-<div class="container">
-
-<div class="card">
-<h2>Mariama</h2>
-
-<div>KPI 1</div>
-<div class="kpi" id="mariama_kpi1">0</div>
-
-<button class="validate" onclick="validateSale('mariama','kpi1')">Valider</button>
-<button class="cancel" id="cancel_mariama_kpi1" onclick="cancelSale('mariama','kpi1')" disabled>Annuler</button>
-
-<hr>
-
-<div>KPI 2</div>
-<div class="kpi" id="mariama_kpi2">0</div>
-
-<button class="validate" onclick="validateSale('mariama','kpi2')">Valider</button>
-<button class="cancel" id="cancel_mariama_kpi2" onclick="cancelSale('mariama','kpi2')" disabled>Annuler</button>
-
-<button class="reset" onclick="resetProfile('mariama')">Réinitialiser</button>
-
+<div class="header">
+  <img src="logo-stn.png">
+  <h1>Suivi des ventes</h1>
 </div>
 
+<div id="login" class="container">
+<h2>Connexion</h2>
+<input type="password" id="password" placeholder="Mot de passe">
+<br>
+<button onclick="login()">Entrer</button>
+<p id="error" style="color:red;"></p>
 </div>
 
-<script>
+<div id="app" class="hidden">
+<h2 id="welcome"></h2>
 
-let data={
-mariama:{
-kpi1:0,
-kpi2:0
-}
-}
+<div id="adminPanel" class="admin-panel hidden">
+<h3>Administration</h3>
+<div id="adminInputs"></div>
+<button onclick="saveObjectives()">Valider tous les objectifs</button>
+<button onclick="resetWeekly()">Reset hebdo objectifs</button>
+</div>
 
-let timers={}
+<div id="items"></div>
+</div>
 
-function validateSale(user,kpi){
+<script type="module">
 
-data[user][kpi]++
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-updateDisplay(user,kpi)
+const firebaseConfig = {
+  apiKey: "AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
+  authDomain: "compteur-stn.firebaseapp.com",
+  projectId: "compteur-stn",
+  storageBucket: "compteur-stn.firebasestorage.app",
+  messagingSenderId: "661197584248",
+  appId: "1:661197584248:web:1dc33900c4422df4c53a8d"
+};
 
-let cancelBtn=document.getElementById("cancel_"+user+"_"+kpi)
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const ref = doc(db, "global", "objectifs");
 
-cancelBtn.disabled=false
+const passwords = {
+  "medine":"Le Havre",
+  "dembele":"Evreux",
+  "johannes":"Mondeville",
+  "orelsan":"Caen",
+  "lincheneau":"La Glacerie",
+  "riles":"Rouen",
+  "secteurstn":"Mariama"
+};
 
-clearTimeout(timers[user+"_"+kpi])
+const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
 
-timers[user+"_"+kpi]=setTimeout(()=>{
+let currentUser="";
+let globalData={};
+let initialObjectives={};
 
-cancelBtn.disabled=true
-
-},20000)
-
-}
-
-function cancelSale(user,kpi){
-
-if(data[user][kpi]>0){
-
-data[user][kpi]--
-
-updateDisplay(user,kpi)
-
-}
-
-document.getElementById("cancel_"+user+"_"+kpi).disabled=true
-
-}
-
-function updateDisplay(user,kpi){
-
-document.getElementById(user+"_"+kpi).innerText=data[user][kpi]
-
-}
-
-function resetProfile(user){
-
-for(let kpi in data[user]){
-
-data[user][kpi]=0
-
-updateDisplay(user,kpi)
-
-document.getElementById("cancel_"+user+"_"+kpi).disabled=true
-
+function getToday(){
+  const d=new Date();
+  return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
 }
 
+window.login=async function(){
+  const pass=document.getElementById("password").value;
+  if(passwords[pass]){
+    currentUser=passwords[pass];
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.getElementById("welcome").innerText="Bienvenue "+currentUser;
+
+    if(currentUser==="Mariama"){
+      document.getElementById("adminPanel").classList.remove("hidden");
+    }
+
+    await initData();
+  }else{
+    document.getElementById("error").innerText="Mot de passe incorrect";
+  }
+}
+
+async function initData(){
+  const snap=await getDoc(ref);
+  if(!snap.exists()){
+    let data={personal:{},lastPersonalReset:getToday()};
+    itemsList.forEach(i=>data[i]=0);
+    Object.values(passwords).forEach(u=>{
+      data.personal[u]={};
+      itemsList.forEach(i=>data.personal[u][i]=0);
+    });
+    await setDoc(ref,data);
+  }
+
+  await checkDailyReset();
+
+  onSnapshot(ref,(docSnap)=>{
+    globalData=docSnap.data();
+    itemsList.forEach(i=>{
+      if(initialObjectives[i]===undefined){
+        initialObjectives[i]=globalData[i];
+      }
+    });
+    display();
+    if(currentUser==="Mariama") renderAdmin();
+  });
+}
+
+async function checkDailyReset(){
+  const snap=await getDoc(ref);
+  const data=snap.data();
+  if(data.lastPersonalReset!==getToday()){
+    let resetPersonal={};
+    Object.values(passwords).forEach(u=>{
+      resetPersonal[u]={};
+      itemsList.forEach(i=>resetPersonal[u][i]=0);
+    });
+    await setDoc(ref,{personal:resetPersonal,lastPersonalReset:getToday()},{merge:true});
+  }
+}
+
+function display(){
+  const container=document.getElementById("items");
+  container.innerHTML="";
+
+  itemsList.forEach(item=>{
+    const remaining=globalData[item]||0;
+    const initial=initialObjectives[item]||remaining;
+    const percent=initial>0?((initial-remaining)/initial)*100:100;
+    const personalValue=globalData.personal?.[currentUser]?.[item]||0;
+
+    const div=document.createElement("div");
+    div.className="item";
+    if(remaining===0) div.classList.add("success");
+
+    div.innerHTML=`
+      <h3>${item}</h3>
+      <p>Objectif restant: <strong>${remaining}</strong></p>
+      <div class="progress-container">
+        <div class="progress-bar" style="width:${percent}%"></div>
+      </div>
+      <div class="personal-line">
+        Mes ventes aujourd'hui : <strong>${personalValue}</strong>
+      </div>
+      <button onclick="decrement('${item}')">
+        Valider une vente
+      </button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+window.decrement=async function(item){
+  const personalValue=globalData.personal[currentUser][item]||0;
+
+  await setDoc(ref,{
+    [item]:(globalData[item]||0)-1,
+    personal:{
+      ...globalData.personal,
+      [currentUser]:{
+        ...globalData.personal[currentUser],
+        [item]:personalValue+1
+      }
+    }
+  },{merge:true});
+}
+
+function renderAdmin(){
+  const div=document.getElementById("adminInputs");
+  div.innerHTML="";
+  itemsList.forEach(item=>{
+    div.innerHTML+=`
+      <div>
+        ${item} :
+        <input type="number" id="obj-${item}" value="${globalData[item]||0}">
+      </div>
+    `;
+  });
+}
+
+window.saveObjectives=async function(){
+  let update={};
+  itemsList.forEach(item=>{
+    update[item]=parseInt(document.getElementById("obj-"+item).value)||0;
+    initialObjectives[item]=update[item];
+  });
+  await setDoc(ref,update,{merge:true});
+}
+
+window.resetWeekly=async function(){
+  if(!confirm("Reset hebdomadaire des objectifs ?")) return;
+  let reset={};
+  itemsList.forEach(item=>{
+    reset[item]=initialObjectives[item]||0;
+  });
+  await setDoc(ref,reset,{merge:true});
 }
 
 </script>
