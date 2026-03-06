@@ -290,15 +290,22 @@ const initial=initialObjectives[item]||remaining;
 const percent=initial>0?((initial-remaining)/initial)*100:100;
 
 let personalValue=0;
+let detailHTML="";
 
 if(currentUser==="Mariama"){
-Object.keys(globalData.personal||{}).forEach(user=>{
-if(user!=="Mariama"){
-personalValue += globalData.personal[user][item]||0;
+
+Object.entries(passwords).forEach(([key,name])=>{
+if(name!=="Mariama"){
+const val=globalData.personal?.[name]?.[item]||0;
+personalValue+=val;
+detailHTML+=`<div style="font-size:12px">${name} : ${val}</div>`;
 }
 });
+
 }else{
+
 personalValue=globalData.personal?.[currentUser]?.[item]||0;
+
 }
 
 const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
@@ -322,6 +329,8 @@ div.innerHTML=`
 <div class="personal-line">
 Mes ventes aujourd'hui : <strong>${personalValue}</strong>
 </div>
+
+${currentUser==="Mariama" ? detailHTML : ""}
 
 <button class="validate" onclick="decrement('${item}')">
 Valider une vente
