@@ -233,7 +233,6 @@ await setDoc(ref,data);
 
 await checkDailyReset();
 
-/* vérifie toutes les minutes si on a changé de jour */
 setInterval(checkDailyReset,60000);
 
 onSnapshot(ref,(docSnap)=>{
@@ -290,7 +289,17 @@ const initial=initialObjectives[item]||remaining;
 
 const percent=initial>0?((initial-remaining)/initial)*100:100;
 
-const personalValue=globalData.personal?.[currentUser]?.[item]||0;
+let personalValue=0;
+
+if(currentUser==="Mariama"){
+Object.keys(globalData.personal||{}).forEach(user=>{
+if(user!=="Mariama"){
+personalValue += globalData.personal[user][item]||0;
+}
+});
+}else{
+personalValue=globalData.personal?.[currentUser]?.[item]||0;
+}
 
 const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
 
@@ -429,9 +438,7 @@ if(!confirm("Réinitialiser tous les objectifs ?")) return;
 let reset={};
 
 itemsList.forEach(item=>{
-
 reset[item]=0;
-
 });
 
 await setDoc(ref,reset,{merge:true});
