@@ -23,6 +23,7 @@ body {
 }
 
 .header img { height: 60px; }
+
 .header h1 {
   margin: 10px 0 0 0;
   font-weight: 600;
@@ -60,7 +61,12 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
 
 #welcome { text-align: center; margin-top: 30px; font-weight: 600; }
 
-#items { display:flex; flex-wrap: wrap; justify-content:center; padding:30px; }
+#items {
+  display:flex;
+  flex-wrap: wrap;
+  justify-content:center;
+  padding:30px;
+}
 
 .item {
   background: #ff7a00;
@@ -73,9 +79,8 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
 }
 
 .item:hover { transform: translateY(-6px); }
-.item.success { background: #1e7e34; animation: pulse 1.2s ease; }
 
-@keyframes pulse { 0%{transform:scale(1);} 50%{transform:scale(1.06);} 100%{transform:scale(1);} }
+.item.success { background: #1e7e34; }
 
 .progress-container {
   background: rgba(255,255,255,0.3);
@@ -103,11 +108,10 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
   border-radius:15px;
 }
 
-/* Responsive */
 @media (max-width:768px){
-  .item { width: 90%; }
-  button { font-size:18px; padding:14px; }
-  .container{ margin-top:40px; }
+.item{ width:90%; }
+button{ font-size:18px; padding:14px; }
+.container{ margin-top:40px; }
 }
 </style>
 </head>
@@ -115,8 +119,8 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
 <body>
 
 <div class="header">
-  <img src="logo-stn.png">
-  <h1>Suivi des ventes</h1>
+<img src="logo-stn.png">
+<h1>Suivi des ventes</h1>
 </div>
 
 <div id="login" class="container">
@@ -128,16 +132,18 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
 </div>
 
 <div id="app" class="hidden">
+
 <h2 id="welcome"></h2>
 
 <div id="adminPanel" class="admin-panel hidden">
 <h3>Administration</h3>
 <div id="adminInputs"></div>
 <button onclick="saveObjectives()">Valider tous les objectifs</button>
-<button onclick="resetWeekly()">Reset hebdo objectifs</button>
+<button onclick="resetWeekly()">Réinitialiser les objectifs</button>
 </div>
 
 <div id="items"></div>
+
 </div>
 
 <script type="module">
@@ -146,29 +152,29 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
-  authDomain: "compteur-stn.firebaseapp.com",
-  projectId: "compteur-stn",
-  storageBucket: "compteur-stn.firebasestorage.app",
-  messagingSenderId: "661197584248",
-  appId: "1:661197584248:web:1dc33900c4422df4c53a8d"
+apiKey: "AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
+authDomain: "compteur-stn.firebaseapp.com",
+projectId: "compteur-stn",
+storageBucket: "compteur-stn.firebasestorage.app",
+messagingSenderId: "661197584248",
+appId: "1:661197584248:web:1dc33900c4422df4c53a8d"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const ref = doc(db, "global", "objectifs");
+const ref = doc(db,"global","objectifs");
 
-const passwords = {
-  "medine":"Le Havre",
-  "dembele":"Evreux",
-  "johannes":"Mondeville",
-  "orelsan":"Caen",
-  "lincheneau":"La Glacerie",
-  "riles":"Rouen",
-  "secteurstn":"Mariama"
+const passwords={
+"medine":"Le Havre",
+"dembele":"Evreux",
+"johannes":"Mondeville",
+"orelsan":"Caen",
+"lincheneau":"La Glacerie",
+"riles":"Rouen",
+"secteurstn":"Mariama"
 };
 
-const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
+const itemsList=["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
 
 let currentUser="";
 let globalData={};
@@ -176,156 +182,260 @@ let initialObjectives={};
 let cancelTimers={};
 
 function getToday(){
-  const d=new Date();
-  return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+return new Date().toLocaleDateString("fr-CA",{timeZone:"Europe/Paris"});
 }
 
 window.login=async function(){
-  const pass=document.getElementById("password").value;
-  if(passwords[pass]){
-    currentUser=passwords[pass];
-    document.getElementById("login").classList.add("hidden");
-    document.getElementById("app").classList.remove("hidden");
-    document.getElementById("welcome").innerText="Bienvenue "+currentUser;
 
-    if(currentUser==="Mariama"){
-      document.getElementById("adminPanel").classList.remove("hidden");
-    }
+const pass=document.getElementById("password").value;
 
-    await initData();
-  }else{
-    document.getElementById("error").innerText="Mot de passe incorrect";
-  }
+if(passwords[pass]){
+
+currentUser=passwords[pass];
+
+document.getElementById("login").classList.add("hidden");
+document.getElementById("app").classList.remove("hidden");
+
+document.getElementById("welcome").innerText="Bienvenue "+currentUser;
+
+if(currentUser==="Mariama"){
+document.getElementById("adminPanel").classList.remove("hidden");
+}
+
+await initData();
+
+}else{
+
+document.getElementById("error").innerText="Mot de passe incorrect";
+
+}
+
 }
 
 async function initData(){
-  const snap=await getDoc(ref);
-  if(!snap.exists()){
-    let data={personal:{},lastPersonalReset:getToday()};
-    itemsList.forEach(i=>data[i]=0);
-    Object.values(passwords).forEach(u=>{
-      data.personal[u]={};
-      itemsList.forEach(i=>data.personal[u][i]=0);
-    });
-    await setDoc(ref,data);
-  }
 
-  onSnapshot(ref,(docSnap)=>{
-    globalData=docSnap.data();
-    itemsList.forEach(i=>{
-      if(initialObjectives[i]===undefined){
-        initialObjectives[i]=globalData[i];
-      }
-    });
-    display();
-    if(currentUser==="Mariama") renderAdmin();
-  });
+const snap=await getDoc(ref);
+
+if(!snap.exists()){
+
+let data={personal:{},lastPersonalReset:getToday()};
+
+itemsList.forEach(i=>data[i]=0);
+
+Object.values(passwords).forEach(u=>{
+data.personal[u]={};
+itemsList.forEach(i=>data.personal[u][i]=0);
+});
+
+await setDoc(ref,data);
+
+}
+
+await checkDailyReset();
+
+/* vérifie toutes les minutes si on a changé de jour */
+setInterval(checkDailyReset,60000);
+
+onSnapshot(ref,(docSnap)=>{
+
+globalData=docSnap.data();
+
+itemsList.forEach(i=>{
+if(initialObjectives[i]===undefined){
+initialObjectives[i]=globalData[i];
+}
+});
+
+display();
+
+if(currentUser==="Mariama") renderAdmin();
+
+});
+
+}
+
+async function checkDailyReset(){
+
+const snap=await getDoc(ref);
+const data=snap.data();
+
+if(data.lastPersonalReset!==getToday()){
+
+let resetPersonal={};
+
+Object.values(passwords).forEach(u=>{
+resetPersonal[u]={};
+itemsList.forEach(i=>resetPersonal[u][i]=0);
+});
+
+await setDoc(ref,{
+personal:resetPersonal,
+lastPersonalReset:getToday()
+},{merge:true});
+
+}
+
 }
 
 function display(){
-  const container=document.getElementById("items");
-  container.innerHTML="";
 
-  itemsList.forEach(item=>{
-    const remaining=globalData[item]||0;
-    const initial=initialObjectives[item]||remaining;
-    const percent=initial>0?((initial-remaining)/initial)*100:100;
-    const personalValue=globalData.personal?.[currentUser]?.[item]||0;
+const container=document.getElementById("items");
 
-    const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
+container.innerHTML="";
 
-    const div=document.createElement("div");
-    div.className="item";
-    if(remaining<=0) div.classList.add("success");
+itemsList.forEach(item=>{
 
-    div.innerHTML=`
-      <h3>${item}</h3>
-      <p>Objectif restant: <strong>${remaining}</strong></p>
-      <div class="progress-container">
-        <div class="progress-bar" style="width:${percent}%"></div>
-      </div>
-      <div class="personal-line">
-        Mes ventes aujourd'hui : <strong>${personalValue}</strong>
-      </div>
-      <button class="validate" onclick="decrement('${item}')">Valider une vente</button>
-      <button class="cancel" ${!cancelAllowed?"disabled":""} onclick="cancelSale('${item}')">Annuler</button>
-    `;
+const remaining=globalData[item]||0;
+const initial=initialObjectives[item]||remaining;
 
-    container.appendChild(div);
-  });
+const percent=initial>0?((initial-remaining)/initial)*100:100;
+
+const personalValue=globalData.personal?.[currentUser]?.[item]||0;
+
+const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
+
+const div=document.createElement("div");
+
+div.className="item";
+
+if(remaining<=0) div.classList.add("success");
+
+div.innerHTML=`
+
+<h3>${item}</h3>
+
+<p>Objectif restant: <strong>${remaining}</strong></p>
+
+<div class="progress-container">
+<div class="progress-bar" style="width:${percent}%"></div>
+</div>
+
+<div class="personal-line">
+Mes ventes aujourd'hui : <strong>${personalValue}</strong>
+</div>
+
+<button class="validate" onclick="decrement('${item}')">
+Valider une vente
+</button>
+
+<button class="cancel" ${!cancelAllowed?"disabled":""} onclick="cancelSale('${item}')">
+Annuler
+</button>
+
+`;
+
+container.appendChild(div);
+
+});
+
 }
 
 window.decrement=async function(item){
-  if(!confirm("Confirmer cette vente ?")) return;
 
-  const personalValue=globalData.personal[currentUser][item]||0;
-  cancelTimers[item]=Date.now()+20000;
+if(!confirm("Confirmer cette vente ?")) return;
 
-  await setDoc(ref,{
-    [item]:(globalData[item]||0)-1,
-    personal:{
-      ...globalData.personal,
-      [currentUser]:{
-        ...globalData.personal[currentUser],
-        [item]:personalValue+1
-      }
-    }
-  },{merge:true});
+const personalValue=globalData.personal[currentUser][item]||0;
 
-  display();
+cancelTimers[item]=Date.now()+20000;
+
+await setDoc(ref,{
+
+[item]:(globalData[item]||0)-1,
+
+personal:{
+...globalData.personal,
+[currentUser]:{
+...globalData.personal[currentUser],
+[item]:personalValue+1
+}
+}
+
+},{merge:true});
+
+display();
+
 }
 
 window.cancelSale=async function(item){
-  if(!cancelTimers[item] || Date.now()>cancelTimers[item]) return;
 
-  const personalValue=globalData.personal[currentUser][item]||0;
+if(!cancelTimers[item] || Date.now()>cancelTimers[item]) return;
 
-  await setDoc(ref,{
-    [item]:(globalData[item]||0)+1,
-    personal:{
-      ...globalData.personal,
-      [currentUser]:{
-        ...globalData.personal[currentUser],
-        [item]:personalValue-1
-      }
-    }
-  },{merge:true});
+const personalValue=globalData.personal[currentUser][item]||0;
 
-  cancelTimers[item]=null;
-  display();
+await setDoc(ref,{
+
+[item]:(globalData[item]||0)+1,
+
+personal:{
+...globalData.personal,
+[currentUser]:{
+...globalData.personal[currentUser],
+[item]:personalValue-1
+}
+}
+
+},{merge:true});
+
+cancelTimers[item]=null;
+
+display();
+
 }
 
 function renderAdmin(){
-  const div=document.getElementById("adminInputs");
-  div.innerHTML="";
-  itemsList.forEach(item=>{
-    div.innerHTML+=`
-      <div>
-        ${item} :
-        <input type="number" id="obj-${item}" value="${globalData[item]||0}">
-      </div>
-    `;
-  });
+
+const div=document.getElementById("adminInputs");
+
+div.innerHTML="";
+
+itemsList.forEach(item=>{
+
+div.innerHTML+=`
+
+<div>
+
+${item} :
+
+<input type="number" id="obj-${item}" value="${globalData[item]||0}">
+
+</div>
+
+`;
+
+});
+
 }
 
 window.saveObjectives=async function(){
-  let update={};
-  itemsList.forEach(item=>{
-    update[item]=parseInt(document.getElementById("obj-"+item).value)||0;
-    initialObjectives[item]=update[item];
-  });
-  await setDoc(ref,update,{merge:true});
+
+let update={};
+
+itemsList.forEach(item=>{
+
+update[item]=parseInt(document.getElementById("obj-"+item).value)||0;
+
+initialObjectives[item]=update[item];
+
+});
+
+await setDoc(ref,update,{merge:true});
+
 }
 
 window.resetWeekly=async function(){
-  if(!confirm("Réinitialiser tous les objectifs ?")) return;
 
-  let reset={};
-  itemsList.forEach(item=>{
-    reset[item]=0; // tout remet à 0 pour Mariama
-  });
+if(!confirm("Réinitialiser tous les objectifs ?")) return;
 
-  await setDoc(ref,reset,{merge:true});
+let reset={};
+
+itemsList.forEach(item=>{
+
+reset[item]=0;
+
+});
+
+await setDoc(ref,reset,{merge:true});
+
 }
 
 </script>
