@@ -254,7 +254,7 @@ function display() {
     const diff = initial - cumulativeValue;
     let objectifText = diff >=0 
         ? `Objectif restant : <strong>${diff}</strong>`
-        : `Objectif dépassé de : <strong>${-diff}</strong> placements`;
+        : `Objectif dépassé de : <strong>${-diff}</strong>`;
 
     // Barre limitée à 100% visuellement
     const percentBar = Math.min(initial>0?(cumulativeValue/initial)*100:0,100);
