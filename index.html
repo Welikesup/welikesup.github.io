@@ -88,21 +88,28 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
   height: 20px;
   margin-top: 10px;
   overflow: hidden;
+  position: relative;
 }
 
 .progress-bar {
   height: 100%;
-  background: white;
   width: 0%;
   transition: width 0.5s ease;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  position: absolute;
+  top:0;
+  left:0;
+  border-radius: 20px;
+}
+
+.progress-text {
+  position: relative;
+  z-index:1;
+  text-align:center;
+  width:100%;
+  line-height:20px;
   font-size:12px;
   font-weight:600;
 }
-
-.item.success .progress-bar { background: #00ff88; }
 
 .personal-line { font-size: 14px; margin-top: 10px; }
 
@@ -227,7 +234,6 @@ if(currentUser==="Mariama") renderAdmin();
 });
 }
 
-// --- Affichage KPI global ---
 function display() {
   const container = document.getElementById("items");
   container.innerHTML = "";
@@ -238,7 +244,6 @@ function display() {
     let totalValue = 0;
     let detailHTML = "";
 
-    // Mariama → cumul secteur
     if(currentUser === "Mariama") {
       Object.entries(passwords).forEach(([key,name])=>{
         if(name!=="Mariama"){
@@ -248,7 +253,6 @@ function display() {
         }
       });
     } else {
-      // Utilisateur simple → ses propres ventes
       totalValue = globalData.personal?.[currentUser]?.[item] || 0;
     }
 
@@ -265,9 +269,8 @@ function display() {
       <h3>${item}</h3>
       <p>Objectif restant: <strong>${remaining}</strong></p>
       <div class="progress-container">
-        <div class="progress-bar" style="width:${percent}%; color:${percent>50?'white':'#ff7a00'};">
-          ${percent.toFixed(0)}%
-        </div>
+        <div class="progress-bar" style="width:${percent}%; background:${percent>50?'white':'#ff7a00'};"></div>
+        <div class="progress-text" style="color:${percent>50?'black':'white'};">${percent.toFixed(0)}%</div>
       </div>
       <div class="personal-line">
         ${currentUser==="Mariama"?"Ventes du secteur aujourd'hui":"Ventes de la boutique aujourd'hui"} : <strong>${totalValue}</strong>
@@ -280,7 +283,6 @@ function display() {
   });
 }
 
-// --- Incrémentation ventes ---
 window.decrement=async function(item){
 if(!confirm("Confirmer cette vente ?")) return;
 const userValue = globalData.personal[currentUser][item] || 0;
@@ -297,7 +299,6 @@ personal:{
 display();
 }
 
-// --- Annulation vente ---
 window.cancelSale=async function(item){
 if(!cancelTimers[item] || Date.now()>cancelTimers[item]) return;
 const userValue = globalData.personal[currentUser][item] || 0;
@@ -314,7 +315,6 @@ cancelTimers[item]=null;
 display();
 }
 
-// --- Admin ---
 function renderAdmin(){
 const div=document.getElementById("adminInputs");
 div.innerHTML="";
@@ -328,7 +328,6 @@ ${item} :
 });
 }
 
-// --- Validation des objectifs par Mariama ---
 window.saveObjectives = async function() {
   if(!confirm("Valider les nouveaux objectifs ?")) return;
   let update = {};
@@ -347,7 +346,6 @@ window.saveObjectives = async function() {
   display();
 }
 
-// --- Réinitialisation des objectifs ---
 window.resetWeekly = async function() {
   if(!confirm("Réinitialiser tous les objectifs et ventes ?")) return;
   let reset = {};
