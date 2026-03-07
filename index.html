@@ -1,29 +1,417 @@
-function display(){
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi des ventes</title>
 
-  const container=document.getElementById("items");
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-  container.innerHTML="";
+<style>
+body {
+  font-family: 'Inter', sans-serif;
+  background: #0f0f0f;
+  color: white;
+  margin: 0;
+}
 
-  itemsList.forEach(item=>{
+.header {
+  background: #000;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.6);
+}
 
-    const remaining=globalData[item]||0;
-    const initial=globalData.initial?.[item] ?? remaining;
+.header img { height: 60px; }
 
-    const percent=Math.min(initial>0?((initial-remaining)/initial)*100:100,100);
+.header h1 {
+  margin: 10px 0 0 0;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: 1px;
+  color: #ff7a00;
+}
 
-    let personalValue=0;
-    let detailHTML="";
+.container { margin-top: 60px; text-align: center; padding:10px; }
 
-    if(currentUser==="Mariama"){
+input {
+  padding: 8px;
+  width: 80px;
+  border-radius: 8px;
+  border: none;
+  margin: 4px;
+  text-align: center;
+}
 
-      Object.entries(passwords).forEach(([key,name])=>{
-        if(name!=="Mariama"){
-          const val=globalData.personal?.[name]?.[item]||0;
-          personalValue+=val;
-          detailHTML+=`<div style="font-size:12px">${name} : ${val}</div>`;
+button {
+  padding: 10px 15px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  max-width:100%;
+}
+
+button.validate { background:white; color:black; }
+button.cancel { background:#222; color:white; margin-left:8px; }
+button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
+
+.hidden { display:none; }
+
+#welcome { text-align: center; margin-top: 30px; font-weight: 600; }
+
+#items {
+  display:flex;
+  flex-wrap: wrap;
+  justify-content:center;
+  padding:30px;
+}
+
+.item {
+  background: #ff7a00;
+  padding: 20px;
+  margin: 15px;
+  border-radius: 18px;
+  width: 260px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+  transition: 0.2s;
+}
+
+.item:hover { transform: translateY(-6px); }
+
+.item.success { background: #1e7e34; }
+
+.progress-container {
+  background: rgba(255,255,255,0.3);
+  border-radius: 20px;
+  height: 10px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: white;
+  width: 0%;
+  transition: width 0.5s ease;
+}
+
+.item.success .progress-bar { background: #00ff88; }
+
+.personal-line { font-size: 14px; margin-top: 10px; }
+
+.admin-panel {
+  background:#1c1c1c;
+  padding:20px;
+  margin:30px;
+  border-radius:15px;
+}
+
+@media (max-width:768px){
+.item{ width:90%; }
+button{ font-size:18px; padding:14px; }
+.container{ margin-top:40px; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<img src="logo-stn.png">
+<h1>Suivi des ventes</h1>
+</div>
+
+<div id="login" class="container">
+<h2>Connexion</h2>
+<input type="password" id="password" placeholder="Mot de passe">
+<br>
+<button onclick="login()">Entrer</button>
+<p id="error" style="color:red;"></p>
+</div>
+
+<div id="app" class="hidden">
+
+<h2 id="welcome"></h2>
+
+<div id="adminPanel" class="admin-panel hidden">
+<h3>Administration</h3>
+<div id="adminInputs"></div>
+<button onclick="saveObjectives()">Valider tous les objectifs</button>
+<button onclick="resetWeekly()">Réinitialiser les objectifs</button>
+</div>
+
+<div id="items"></div>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
+authDomain: "compteur-stn.firebaseapp.com",
+projectId: "compteur-stn",
+storageBucket: "compteur-stn.firebasestorage.app",
+messagingSenderId: "661197584248",
+appId: "1:661197584248:web:1dc33900c4422df4c53a8d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const ref = doc(db,"global","objectifs");
+
+const passwords={
+"medine":"Le Havre",
+"dembele":"Evreux",
+"johannes":"Mondeville",
+"orelsan":"Caen",
+"lincheneau":"La Glacerie",
+"riles":"Rouen",
+"secteurstn":"Mariama"
+};
+
+const itemsList=["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
+
+let currentUser="";
+let globalData={};
+let cancelTimers={};
+
+function getToday(){
+return new Date().toLocaleDateString("fr-CA",{timeZone:"Europe/Paris"});
+}
+
+window.login=async function(){
+
+const pass=document.getElementById("password").value;
+
+if(passwords[pass]){
+
+currentUser=passwords[pass];
+
+document.getElementById("login").classList.add("hidden");
+document.getElementById("app").classList.remove("hidden");
+
+document.getElementById("welcome").innerText="Bienvenue "+currentUser;
+
+if(currentUser==="Mariama"){
+document.getElementById("adminPanel").classList.remove("hidden");
+}
+
+await initData();
+
+}else{
+
+document.getElementById("error").innerText="Mot de passe incorrect";
+
+}
+
+}
+
+async function initData(){
+
+const snap=await getDoc(ref);
+
+if(!snap.exists()){
+
+let data={personal:{},initial:{},lastPersonalReset:getToday()};
+
+itemsList.forEach(i=>{
+data[i]=0;
+data.initial[i]=0;
+});
+
+Object.values(passwords).forEach(u=>{
+data.personal[u]={};
+itemsList.forEach(i=>data.personal[u][i]=0);
+});
+
+await setDoc(ref,data);
+
+}
+
+onSnapshot(ref,(docSnap)=>{
+
+globalData=docSnap.data();
+display();
+
+if(currentUser==="Mariama") renderAdmin();
+
+});
+
+}
+
+function display() {
+
+  const container = document.getElementById("items");
+  container.innerHTML = "";
+
+  itemsList.forEach(item => {
+
+    const remaining = globalData[item] || 0;
+    const initial = globalData.initial?.[item] ?? remaining;
+
+    const percent = Math.min(initial > 0 ? ((initial - remaining) / initial) * 100 : 100, 100);
+
+    let personalValue = 0;
+    let detailHTML = "";
+
+    if (currentUser === "Mariama") {
+
+      Object.entries(passwords).forEach(([key, name]) => {
+        if (name !== "Mariama") {
+          const val = globalData.personal?.[name]?.[item] || 0;
+          personalValue += val;
+          detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
         }
       });
 
-    }else{
+    } else {
 
-      personalValue=globalData.personal?.[current
+      personalValue = globalData.personal?.[currentUser]?.[item] || 0;
+
+    }
+
+    const cancelAllowed = cancelTimers[item] && Date.now() < cancelTimers[item];
+
+    const div = document.createElement("div");
+    div.className = "item";
+
+    if (remaining <= 0) div.classList.add("success");
+
+    div.innerHTML = `
+      <h3>${item}</h3>
+      <p>Objectif restant: <strong>${remaining}</strong></p>
+      <div class="progress-container">
+        <div class="progress-bar" style="width:${percent}%"></div>
+      </div>
+      <div class="personal-line">
+        ${currentUser === "Mariama" ? "Ventes du secteur aujourd'hui" : "Ventes de la boutique aujourd'hui"} : <strong>${personalValue}</strong>
+      </div>
+      ${currentUser === "Mariama" ? detailHTML : ""}
+      <button class="validate" onclick="decrement('${item}')">
+        Valider une vente
+      </button>
+      <button class="cancel" ${!cancelAllowed ? "disabled" : ""} onclick="cancelSale('${item}')">
+        Annuler
+      </button>
+    `;
+
+    container.appendChild(div);
+
+  });
+
+}
+
+window.decrement=async function(item){
+
+if(!confirm("Confirmer cette vente ?")) return;
+
+const personalValue=globalData.personal[currentUser][item]||0;
+
+cancelTimers[item]=Date.now()+20000;
+
+await setDoc(ref,{
+
+[item]:(globalData[item]||0)-1,
+
+personal:{
+...globalData.personal,
+[currentUser]:{
+...globalData.personal[currentUser],
+[item]:personalValue+1
+}
+}
+
+},{merge:true});
+
+display();
+
+}
+
+window.cancelSale=async function(item){
+
+if(!cancelTimers[item] || Date.now()>cancelTimers[item]) return;
+
+const personalValue=globalData.personal[currentUser][item]||0;
+
+await setDoc(ref,{
+
+[item]:(globalData[item]||0)+1,
+
+personal:{
+...globalData.personal,
+[currentUser]:{
+...globalData.personal[currentUser],
+[item]:personalValue-1
+}
+}
+
+},{merge:true});
+
+cancelTimers[item]=null;
+
+display();
+
+}
+
+function renderAdmin(){
+
+const div=document.getElementById("adminInputs");
+
+div.innerHTML="";
+
+itemsList.forEach(item=>{
+
+div.innerHTML+=`
+<div>
+${item} :
+<input type="number" id="obj-${item}" value="${globalData[item]||0}">
+</div>
+`;
+
+});
+
+}
+
+window.saveObjectives=async function(){
+
+let update={};
+let initial={...globalData.initial};
+
+itemsList.forEach(item=>{
+
+const val=parseInt(document.getElementById("obj-"+item).value)||0;
+
+update[item]=val;
+initial[item]=val;
+
+});
+
+await setDoc(ref,{
+...update,
+initial:initial
+},{merge:true});
+
+}
+
+window.resetWeekly=async function(){
+
+if(!confirm("Réinitialiser tous les objectifs ?")) return;
+
+let reset={};
+
+itemsList.forEach(item=>{
+reset[item]=0;
+});
+
+await setDoc(ref,reset,{merge:true});
+
+}
+
+</script>
+</body>
+</html>
