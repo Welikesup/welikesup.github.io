@@ -244,6 +244,7 @@ if(currentUser==="Mariama") renderAdmin();
 
 }
 
+// --- Fonction display corrigée ---
 function display() {
 
   const container = document.getElementById("items");
@@ -251,16 +252,13 @@ function display() {
 
   itemsList.forEach(item => {
 
-    const remaining = globalData[item] || 0;
-    const initial = globalData.initial?.[item] ?? remaining;
+    const initial = globalData.initial?.[item] ?? 0;
 
-    const percent = Math.min(initial > 0 ? ((initial - remaining) / initial) * 100 : 100, 100);
-
+    // Calcul des ventes cumulées pour la barre
     let personalValue = 0;
     let detailHTML = "";
 
     if (currentUser === "Mariama") {
-
       Object.entries(passwords).forEach(([key, name]) => {
         if (name !== "Mariama") {
           const val = globalData.personal?.[name]?.[item] || 0;
@@ -268,18 +266,17 @@ function display() {
           detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
         }
       });
-
     } else {
-
       personalValue = globalData.personal?.[currentUser]?.[item] || 0;
-
     }
+
+    const remaining = Math.max(initial - personalValue, 0);
+    const percent = Math.min(initial > 0 ? (personalValue / initial) * 100 : 0, 100);
 
     const cancelAllowed = cancelTimers[item] && Date.now() < cancelTimers[item];
 
     const div = document.createElement("div");
     div.className = "item";
-
     if (remaining <= 0) div.classList.add("success");
 
     div.innerHTML = `
@@ -299,9 +296,7 @@ function display() {
         Annuler
       </button>
     `;
-
     container.appendChild(div);
-
   });
 
 }
@@ -310,22 +305,19 @@ window.decrement=async function(item){
 
 if(!confirm("Confirmer cette vente ?")) return;
 
-const personalValue=globalData.personal[currentUser][item]||0;
+const personalValue = globalData.personal[currentUser][item] || 0;
 
-cancelTimers[item]=Date.now()+20000;
+cancelTimers[item] = Date.now() + 20000;
 
 await setDoc(ref,{
-
-[item]:(globalData[item]||0)-1,
-
+[item]: (globalData[item] || 0) - 1,
 personal:{
 ...globalData.personal,
-[currentUser]:{
+[currentUser]: {
 ...globalData.personal[currentUser],
-[item]:personalValue+1
+[item]: personalValue + 1
 }
 }
-
 },{merge:true});
 
 display();
@@ -336,23 +328,20 @@ window.cancelSale=async function(item){
 
 if(!cancelTimers[item] || Date.now()>cancelTimers[item]) return;
 
-const personalValue=globalData.personal[currentUser][item]||0;
+const personalValue = globalData.personal[currentUser][item] || 0;
 
 await setDoc(ref,{
-
-[item]:(globalData[item]||0)+1,
-
+[item]: (globalData[item] || 0) + 1,
 personal:{
 ...globalData.personal,
-[currentUser]:{
+[currentUser]: {
 ...globalData.personal[currentUser],
-[item]:personalValue-1
+[item]: personalValue - 1
 }
 }
-
 },{merge:true});
 
-cancelTimers[item]=null;
+cancelTimers[item] = null;
 
 display();
 
@@ -361,18 +350,15 @@ display();
 function renderAdmin(){
 
 const div=document.getElementById("adminInputs");
-
 div.innerHTML="";
 
 itemsList.forEach(item=>{
-
 div.innerHTML+=`
 <div>
 ${item} :
 <input type="number" id="obj-${item}" value="${globalData[item]||0}">
 </div>
 `;
-
 });
 
 }
@@ -383,17 +369,14 @@ let update={};
 let initial={...globalData.initial};
 
 itemsList.forEach(item=>{
-
-const val=parseInt(document.getElementById("obj-"+item).value)||0;
-
-update[item]=val;
-initial[item]=val;
-
+const val = parseInt(document.getElementById("obj-"+item).value) || 0;
+update[item] = val;
+initial[item] = val; // Initialisé au moment où Mariama valide
 });
 
 await setDoc(ref,{
 ...update,
-initial:initial
+initial: initial
 },{merge:true});
 
 }
@@ -403,7 +386,6 @@ window.resetWeekly=async function(){
 if(!confirm("Réinitialiser tous les objectifs ?")) return;
 
 let reset={};
-
 itemsList.forEach(item=>{
 reset[item]=0;
 });
