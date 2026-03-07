@@ -231,10 +231,6 @@ await setDoc(ref,data);
 
 }
 
-await checkDailyReset();
-
-setInterval(checkDailyReset,60000);
-
 onSnapshot(ref,(docSnap)=>{
 
 globalData=docSnap.data();
@@ -250,29 +246,6 @@ display();
 if(currentUser==="Mariama") renderAdmin();
 
 });
-
-}
-
-async function checkDailyReset(){
-
-const snap=await getDoc(ref);
-const data=snap.data();
-
-if(data.lastPersonalReset!==getToday()){
-
-let resetPersonal={};
-
-Object.values(passwords).forEach(u=>{
-resetPersonal[u]={};
-itemsList.forEach(i=>resetPersonal[u][i]=0);
-});
-
-await setDoc(ref,{
-personal:resetPersonal,
-lastPersonalReset:getToday()
-},{merge:true});
-
-}
 
 }
 
