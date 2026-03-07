@@ -242,23 +242,31 @@ function display() {
   itemsList.forEach(item => {
     const initial = globalData.initial?.[item] ?? 0;
 
-    let totalValue = 0;
-    let detailHTML = "";
+    // Cumul des ventes pour la barre (identique pour tous)
+    let cumulativeValue = 0;
+    Object.entries(passwords).forEach(([key,name])=>{
+      if(name!=="Mariama"){
+        cumulativeValue += globalData.personal?.[name]?.[item] || 0;
+      }
+    });
 
-    if(currentUser === "Mariama") {
+    const remaining = Math.max(initial - cumulativeValue,0);
+    const percent = Math.min(initial>0?(cumulativeValue/initial)*100:0,100);
+
+    // Valeur à afficher sous la barre
+    let userValue = (currentUser==="Mariama") ? cumulativeValue : (globalData.personal?.[currentUser]?.[item] || 0);
+    let personalText = (currentUser==="Mariama") ? "Ventes du secteur aujourd'hui" : "Ventes de la boutique aujourd'hui";
+
+    // Détail des ventes pour Mariama
+    let detailHTML = "";
+    if(currentUser==="Mariama"){
       Object.entries(passwords).forEach(([key,name])=>{
         if(name!=="Mariama"){
           const val = globalData.personal?.[name]?.[item] || 0;
-          totalValue += val;
           detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
         }
       });
-    } else {
-      totalValue = globalData.personal?.[currentUser]?.[item] || 0;
     }
-
-    const remaining = Math.max(initial - totalValue,0);
-    const percent = Math.min(initial>0?(totalValue/initial)*100:0,100);
 
     const cancelAllowed = cancelTimers[item] && Date.now() < cancelTimers[item];
 
@@ -274,7 +282,7 @@ function display() {
         <div class="progress-text" style="color:${percent>0?'#ff7a00':'white'};">${percent.toFixed(0)}%</div>
       </div>
       <div class="personal-line">
-        ${currentUser==="Mariama"?"Ventes du secteur aujourd'hui":"Ventes de la boutique aujourd'hui"} : <strong>${totalValue}</strong>
+        ${personalText} : <strong>${userValue}</strong>
       </div>
       ${detailHTML}
       <button class="validate" onclick="decrement('${item}')">Valider une vente</button>
