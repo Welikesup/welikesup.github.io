@@ -244,7 +244,7 @@ if(currentUser==="Mariama") renderAdmin();
 
 }
 
-// --- Fonction display corrigée ---
+// --- Fonction display pour objectif global ---
 function display() {
 
   const container = document.getElementById("items");
@@ -254,24 +254,22 @@ function display() {
 
     const initial = globalData.initial?.[item] ?? 0;
 
-    // Calcul des ventes cumulées pour la barre
-    let personalValue = 0;
+    // Calcul des ventes cumulées pour tous les utilisateurs
+    let totalValue = 0;
     let detailHTML = "";
 
-    if (currentUser === "Mariama") {
-      Object.entries(passwords).forEach(([key, name]) => {
-        if (name !== "Mariama") {
-          const val = globalData.personal?.[name]?.[item] || 0;
-          personalValue += val;
+    Object.entries(passwords).forEach(([key, name]) => {
+      if(name !== "Mariama"){
+        const val = globalData.personal?.[name]?.[item] || 0;
+        totalValue += val;
+        if(currentUser === "Mariama"){
           detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
         }
-      });
-    } else {
-      personalValue = globalData.personal?.[currentUser]?.[item] || 0;
-    }
+      }
+    });
 
-    const remaining = Math.max(initial - personalValue, 0);
-    const percent = Math.min(initial > 0 ? (personalValue / initial) * 100 : 0, 100);
+    const remaining = Math.max(initial - totalValue, 0);
+    const percent = Math.min(initial > 0 ? (totalValue / initial) * 100 : 0, 100);
 
     const cancelAllowed = cancelTimers[item] && Date.now() < cancelTimers[item];
 
@@ -286,9 +284,9 @@ function display() {
         <div class="progress-bar" style="width:${percent}%"></div>
       </div>
       <div class="personal-line">
-        ${currentUser === "Mariama" ? "Ventes du secteur aujourd'hui" : "Ventes de la boutique aujourd'hui"} : <strong>${personalValue}</strong>
+        ${currentUser === "Mariama" ? "Ventes du secteur aujourd'hui" : "Ventes de la boutique aujourd'hui"} : <strong>${totalValue}</strong>
       </div>
-      ${currentUser === "Mariama" ? detailHTML : ""}
+      ${detailHTML}
       <button class="validate" onclick="decrement('${item}')">
         Valider une vente
       </button>
@@ -305,17 +303,21 @@ window.decrement=async function(item){
 
 if(!confirm("Confirmer cette vente ?")) return;
 
-const personalValue = globalData.personal[currentUser][item] || 0;
+const totalValue = Object.values(globalData.personal).reduce((sum, u)=>{
+  return sum + ((u[item]) || 0);
+},0);
 
 cancelTimers[item] = Date.now() + 20000;
 
+// Pour simplifier, incrémente l'utilisateur actuel
+const userValue = globalData.personal[currentUser][item] || 0;
+
 await setDoc(ref,{
-[item]: (globalData[item] || 0) - 1,
 personal:{
 ...globalData.personal,
 [currentUser]: {
 ...globalData.personal[currentUser],
-[item]: personalValue + 1
+[item]: userValue + 1
 }
 }
 },{merge:true});
@@ -328,15 +330,14 @@ window.cancelSale=async function(item){
 
 if(!cancelTimers[item] || Date.now()>cancelTimers[item]) return;
 
-const personalValue = globalData.personal[currentUser][item] || 0;
+const userValue = globalData.personal[currentUser][item] || 0;
 
 await setDoc(ref,{
-[item]: (globalData[item] || 0) + 1,
 personal:{
 ...globalData.personal,
 [currentUser]: {
 ...globalData.personal[currentUser],
-[item]: personalValue - 1
+[item]: userValue - 1
 }
 }
 },{merge:true});
