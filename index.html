@@ -250,16 +250,20 @@ function display() {
       }
     });
 
-    const remaining = Math.max(initial - cumulativeValue,0);
+    // Calcul objectif restant / dépassé
+    const diff = initial - cumulativeValue;
+    let objectifText = diff >=0 
+        ? `Objectif restant : <strong>${diff}</strong>`
+        : `Objectif dépassé de : <strong>${-diff}</strong> placements`;
 
-    // La barre reste limitée à 100%
+    // Barre limitée à 100% visuellement
     const percentBar = Math.min(initial>0?(cumulativeValue/initial)*100:0,100);
 
-    // Le texte % affiche le vrai pourcentage, peut dépasser 100%
+    // Le texte % peut dépasser 100%
     const percentText = initial>0 ? (cumulativeValue/initial)*100 : 0;
 
     // Choix de la couleur du texte %
-    let percentColor = "#ff7a00"; // orange par défaut
+    let percentColor = "#ff7a00"; // orange
     if(percentText >= 100 && percentText < 120){
       percentColor = "#66cc88"; // vert clair doux
     } else if(percentText >= 120){
@@ -285,11 +289,11 @@ function display() {
 
     const div=document.createElement("div");
     div.className="item";
-    if(remaining<=0) div.classList.add("success");
+    if(diff <= 0) div.classList.add("success");
 
     div.innerHTML=`
       <h3>${item}</h3>
-      <p>Objectif restant: <strong>${remaining}</strong></p>
+      <p>${objectifText}</p>
       <div class="progress-container">
         <div class="progress-bar" style="width:${percentBar}%;"></div>
         <div class="progress-text" style="color:${percentColor};">${percentText.toFixed(0)}%</div>
