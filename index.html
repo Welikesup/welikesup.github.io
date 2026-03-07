@@ -238,15 +238,19 @@ function display() {
     let totalValue = 0;
     let detailHTML = "";
 
-    Object.entries(passwords).forEach(([key,name])=>{
-      if(name!=="Mariama"){
-        const val = globalData.personal?.[name]?.[item] || 0;
-        totalValue += val;
-        if(currentUser==="Mariama"){
+    // Mariama → cumul secteur
+    if(currentUser === "Mariama") {
+      Object.entries(passwords).forEach(([key,name])=>{
+        if(name!=="Mariama"){
+          const val = globalData.personal?.[name]?.[item] || 0;
+          totalValue += val;
           detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
         }
-      }
-    });
+      });
+    } else {
+      // Utilisateur simple → ses propres ventes
+      totalValue = globalData.personal?.[currentUser]?.[item] || 0;
+    }
 
     const remaining = Math.max(initial - totalValue,0);
     const percent = Math.min(initial>0?(totalValue/initial)*100:0,100);
