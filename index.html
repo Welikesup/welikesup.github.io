@@ -255,7 +255,7 @@ itemsList.forEach(item=>{
 const remaining=globalData[item]||0;
 const initial=globalData.initial?.[item] ?? remaining;
 
-const percent=initial>0?((initial-remaining)/initial)*100:100;
+const percent=Math.min(initial>0?((initial-remaining)/initial)*100:100,100);
 
 let personalValue=0;
 let detailHTML="";
@@ -377,12 +377,10 @@ div.innerHTML="";
 itemsList.forEach(item=>{
 
 div.innerHTML+=`
-
 <div>
 ${item} :
 <input type="number" id="obj-${item}" value="${globalData[item]||0}">
 </div>
-
 `;
 
 });
