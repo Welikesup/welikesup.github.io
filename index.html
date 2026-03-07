@@ -99,6 +99,7 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
   top:0;
   left:0;
   border-radius: 20px;
+  background: white;
 }
 
 .progress-text {
@@ -269,8 +270,8 @@ function display() {
       <h3>${item}</h3>
       <p>Objectif restant: <strong>${remaining}</strong></p>
       <div class="progress-container">
-        <div class="progress-bar" style="width:${percent}%; background:${percent>50?'white':'#ff7a00'};"></div>
-        <div class="progress-text" style="color:${percent>50?'black':'white'};">${percent.toFixed(0)}%</div>
+        <div class="progress-bar" style="width:${percent}%;"></div>
+        <div class="progress-text" style="color:${percent>0?'#ff7a00':'white'};">${percent.toFixed(0)}%</div>
       </div>
       <div class="personal-line">
         ${currentUser==="Mariama"?"Ventes du secteur aujourd'hui":"Ventes de la boutique aujourd'hui"} : <strong>${totalValue}</strong>
