@@ -85,7 +85,7 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
 .progress-container {
   background: rgba(255,255,255,0.3);
   border-radius: 20px;
-  height: 10px;
+  height: 20px;
   margin-top: 10px;
   overflow: hidden;
 }
@@ -95,6 +95,11 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
   background: white;
   width: 0%;
   transition: width 0.5s ease;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:600;
 }
 
 .item.success .progress-bar { background: #00ff88; }
@@ -256,7 +261,9 @@ function display() {
       <h3>${item}</h3>
       <p>Objectif restant: <strong>${remaining}</strong></p>
       <div class="progress-container">
-        <div class="progress-bar" style="width:${percent}%"></div>
+        <div class="progress-bar" style="width:${percent}%; color:${percent>50?'white':'#ff7a00'};">
+          ${percent.toFixed(0)}%
+        </div>
       </div>
       <div class="personal-line">
         ${currentUser==="Mariama"?"Ventes du secteur aujourd'hui":"Ventes de la boutique aujourd'hui"} : <strong>${totalValue}</strong>
@@ -272,10 +279,8 @@ function display() {
 // --- Incrémentation ventes ---
 window.decrement=async function(item){
 if(!confirm("Confirmer cette vente ?")) return;
-
 const userValue = globalData.personal[currentUser][item] || 0;
 cancelTimers[item] = Date.now() + 20000;
-
 await setDoc(ref,{
 personal:{
 ...globalData.personal,
@@ -285,16 +290,13 @@ personal:{
 }
 }
 },{merge:true});
-
 display();
 }
 
 // --- Annulation vente ---
 window.cancelSale=async function(item){
 if(!cancelTimers[item] || Date.now()>cancelTimers[item]) return;
-
 const userValue = globalData.personal[currentUser][item] || 0;
-
 await setDoc(ref,{
 personal:{
 ...globalData.personal,
@@ -304,9 +306,7 @@ personal:{
 }
 }
 },{merge:true});
-
 cancelTimers[item]=null;
-
 display();
 }
 
@@ -327,43 +327,35 @@ ${item} :
 // --- Validation des objectifs par Mariama ---
 window.saveObjectives = async function() {
   if(!confirm("Valider les nouveaux objectifs ?")) return;
-
   let update = {};
   let initial = {...globalData.initial};
   let currentKPI = {...globalData};
-
   itemsList.forEach(item => {
     const val = parseInt(document.getElementById("obj-"+item).value) || 0;
-    update[item] = val;       // compteur global
-    initial[item] = val;      // barre initiale
+    update[item] = val;
+    initial[item] = val;
   });
-
   await setDoc(ref, {
     ...currentKPI,
     ...update,
     initial: initial
   }, {merge:true});
-
   display();
 }
 
 // --- Réinitialisation des objectifs ---
 window.resetWeekly = async function() {
   if(!confirm("Réinitialiser tous les objectifs et ventes ?")) return;
-
   let reset = {};
   let currentKPI = {...globalData};
-
   itemsList.forEach(item => {
     reset[item] = 0;
-    currentKPI.initial[item] = 0; // barre remise à zéro
+    currentKPI.initial[item] = 0;
   });
-
   await setDoc(ref, {
     ...currentKPI,
     ...reset
   }, {merge:true});
-
   display();
 }
 
