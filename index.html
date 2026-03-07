@@ -185,24 +185,16 @@ return new Date().toLocaleDateString("fr-CA",{timeZone:"Europe/Paris"});
 }
 
 window.login=async function(){
-
 const pass=document.getElementById("password").value;
-
 if(passwords[pass]){
-
 currentUser=passwords[pass];
-
 document.getElementById("login").classList.add("hidden");
 document.getElementById("app").classList.remove("hidden");
-
 document.getElementById("welcome").innerText="Bienvenue "+currentUser;
-
 if(currentUser==="Mariama"){
 document.getElementById("adminPanel").classList.remove("hidden");
 }
-
 await initData();
-
 }else{
 document.getElementById("error").innerText="Mot de passe incorrect";
 }
@@ -210,7 +202,6 @@ document.getElementById("error").innerText="Mot de passe incorrect";
 
 async function initData(){
 const snap=await getDoc(ref);
-
 if(!snap.exists()){
 let data={personal:{},initial:{},lastPersonalReset:getToday()};
 itemsList.forEach(i=>{
@@ -283,7 +274,6 @@ window.decrement=async function(item){
 if(!confirm("Confirmer cette vente ?")) return;
 
 const userValue = globalData.personal[currentUser][item] || 0;
-
 cancelTimers[item] = Date.now() + 20000;
 
 await setDoc(ref,{
@@ -335,34 +325,46 @@ ${item} :
 }
 
 // --- Validation des objectifs par Mariama ---
-window.saveObjectives=async function(){
-let update={};
-let initial={...globalData.initial};
+window.saveObjectives = async function() {
+  if(!confirm("Valider les nouveaux objectifs ?")) return;
 
-itemsList.forEach(item=>{
-const val=parseInt(document.getElementById("obj-"+item).value) || 0;
-update[item]=val;       // Met à jour compteur global
-initial[item]=val;      // Met à jour initial pour barre
-});
+  let update = {};
+  let initial = {...globalData.initial};
+  let currentKPI = {...globalData};
 
-await setDoc(ref,{
-...update,
-initial:initial
-},{merge:true});
+  itemsList.forEach(item => {
+    const val = parseInt(document.getElementById("obj-"+item).value) || 0;
+    update[item] = val;       // compteur global
+    initial[item] = val;      // barre initiale
+  });
 
-display(); // rafraîchit immédiatement
+  await setDoc(ref, {
+    ...currentKPI,
+    ...update,
+    initial: initial
+  }, {merge:true});
+
+  display();
 }
 
 // --- Réinitialisation des objectifs ---
-window.resetWeekly=async function(){
-if(!confirm("Réinitialiser tous les objectifs ?")) return;
+window.resetWeekly = async function() {
+  if(!confirm("Réinitialiser tous les objectifs et ventes ?")) return;
 
-let reset={};
-itemsList.forEach(item=>{
-reset[item]=0;
-});
+  let reset = {};
+  let currentKPI = {...globalData};
 
-await setDoc(ref,reset,{merge:true});
+  itemsList.forEach(item => {
+    reset[item] = 0;
+    currentKPI.initial[item] = 0; // barre remise à zéro
+  });
+
+  await setDoc(ref, {
+    ...currentKPI,
+    ...reset
+  }, {merge:true});
+
+  display();
 }
 
 </script>
