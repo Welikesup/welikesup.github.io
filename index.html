@@ -178,7 +178,6 @@ const itemsList=["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyb
 
 let currentUser="";
 let globalData={};
-let initialObjectives={};
 let cancelTimers={};
 
 function getToday(){
@@ -218,9 +217,12 @@ const snap=await getDoc(ref);
 
 if(!snap.exists()){
 
-let data={personal:{},lastPersonalReset:getToday()};
+let data={personal:{},initial:{},lastPersonalReset:getToday()};
 
-itemsList.forEach(i=>data[i]=0);
+itemsList.forEach(i=>{
+data[i]=0;
+data.initial[i]=0;
+});
 
 Object.values(passwords).forEach(u=>{
 data.personal[u]={};
@@ -234,13 +236,6 @@ await setDoc(ref,data);
 onSnapshot(ref,(docSnap)=>{
 
 globalData=docSnap.data();
-
-itemsList.forEach(i=>{
-if(initialObjectives[i]===undefined){
-initialObjectives[i]=globalData[i];
-}
-});
-
 display();
 
 if(currentUser==="Mariama") renderAdmin();
@@ -258,7 +253,7 @@ container.innerHTML="";
 itemsList.forEach(item=>{
 
 const remaining=globalData[item]||0;
-const initial=initialObjectives[item]||remaining;
+const initial=globalData.initial?.[item] ?? remaining;
 
 const percent=initial>0?((initial-remaining)/initial)*100:100;
 
@@ -384,11 +379,8 @@ itemsList.forEach(item=>{
 div.innerHTML+=`
 
 <div>
-
 ${item} :
-
 <input type="number" id="obj-${item}" value="${globalData[item]||0}">
-
 </div>
 
 `;
@@ -400,16 +392,21 @@ ${item} :
 window.saveObjectives=async function(){
 
 let update={};
+let initial={...globalData.initial};
 
 itemsList.forEach(item=>{
 
-update[item]=parseInt(document.getElementById("obj-"+item).value)||0;
+const val=parseInt(document.getElementById("obj-"+item).value)||0;
 
-initialObjectives[item]=update[item];
+update[item]=val;
+initial[item]=val;
 
 });
 
-await setDoc(ref,update,{merge:true});
+await setDoc(ref,{
+...update,
+initial:initial
+},{merge:true});
 
 }
 
