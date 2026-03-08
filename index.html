@@ -444,25 +444,36 @@ async function resetDailyPersonalIfNeeded(){
 
 window.login = async function(){
   const pass = document.getElementById("password").value;
-  const hashed = await hashPassword(pass);
 
-  if(!passwords[hashed]){
-    document.getElementById("error").innerText = "Mot de passe incorrect";
+  if(!window.crypto || !window.crypto.subtle){
+    alert("Navigateur non compatible. Utilisez Chrome ou Safari récent.");
     return;
   }
 
-  currentUser = passwords[hashed];
+  try{
+    const hashed = await hashPassword(pass);
 
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-  document.getElementById("welcome").innerText = "Bienvenue " + currentUser;
+    if(!passwords[hashed]){
+      document.getElementById("error").innerText = "Mot de passe incorrect";
+      return;
+    }
 
-  if(currentUser === "Mariama"){
-    document.getElementById("adminPanel").classList.remove("hidden");
-    document.getElementById("rankingPanel").classList.remove("hidden");
+    currentUser = passwords[hashed];
+
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.getElementById("welcome").innerText = "Bienvenue " + currentUser;
+
+    if(currentUser === "Mariama"){
+      document.getElementById("adminPanel").classList.remove("hidden");
+      document.getElementById("rankingPanel").classList.remove("hidden");
+    }
+
+    await initData();
+  }catch(e){
+    console.error(e);
+    alert("Erreur lors de la connexion.");
   }
-
-  await initData();
 };
 
 async function initData(){
@@ -783,6 +794,14 @@ window.resetWeekly = async function(){
     }, { merge:true });
   });
 };
+
+/* Touche Entrée sur le champ mot de passe */
+document.getElementById("password").addEventListener("keydown", function(event){
+  if(event.key === "Enter"){
+    event.preventDefault();
+    login();
+  }
+});
 </script>
 
 </body>
