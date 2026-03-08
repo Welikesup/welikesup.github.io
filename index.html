@@ -277,6 +277,13 @@ function display(){
     const initial = globalData.initial?.[item] ?? 0;
     const cumulativeValue = globalData.sectorTotal?.[item] || 0;
 
+    let todaySectorValue = 0;
+    Object.values(passwords).forEach(name=>{
+      if(name !== "Mariama"){
+        todaySectorValue += globalData.personal?.[name]?.[item] || 0;
+      }
+    });
+
     const diff = initial - cumulativeValue;
 
     let objectifText = diff >= 0
@@ -291,7 +298,7 @@ function display(){
     if(percentText >= 120) percentColor = "#1e7e34";
 
     let userValue = (currentUser === "Mariama")
-      ? cumulativeValue
+      ? todaySectorValue
       : (globalData.personal?.[currentUser]?.[item] || 0);
 
     let personalText = (currentUser === "Mariama")
