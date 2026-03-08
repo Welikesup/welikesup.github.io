@@ -32,7 +32,11 @@ body {
   color: #ff7a00;
 }
 
-.container { margin-top: 60px; text-align: center; padding:10px; }
+.container {
+  margin-top: 60px;
+  text-align: center;
+  padding:10px;
+}
 
 input {
   padding: 8px;
@@ -59,7 +63,11 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
 
 .hidden { display:none; }
 
-#welcome { text-align: center; margin-top: 30px; font-weight: 600; }
+#welcome {
+  text-align: center;
+  margin-top: 30px;
+  font-weight: 600;
+}
 
 #items {
   display:flex;
@@ -85,6 +93,29 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
     0 0 10px rgba(30,126,52,0.7),
     0 0 20px rgba(30,126,52,0.6),
     0 0 30px rgba(30,126,52,0.5);
+}
+
+@keyframes leaderFlash {
+  0% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 rgba(255,215,0,0),
+      0 10px 25px rgba(0,0,0,0.4);
+  }
+  20% {
+    transform: scale(1.03);
+    box-shadow:
+      0 0 12px rgba(255,215,0,0.9),
+      0 0 24px rgba(255,215,0,0.7),
+      0 10px 25px rgba(0,0,0,0.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.item.leader-flash {
+  animation: leaderFlash 1s ease;
 }
 
 .progress-container {
@@ -117,19 +148,74 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
   font-weight:600;
 }
 
-.personal-line { font-size: 14px; margin-top: 10px; }
+.personal-line {
+  font-size: 14px;
+  margin-top: 10px;
+}
 
-.admin-panel {
+.admin-panel,
+.ranking-panel {
   background:#1c1c1c;
   padding:20px;
   margin:30px;
   border-radius:15px;
 }
 
+.ranking-panel h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.ranking-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:8px 10px;
+  border-radius:10px;
+  margin-bottom:8px;
+  background: rgba(255,255,255,0.06);
+  font-size:14px;
+}
+
+.ranking-row.top1 {
+  background: rgba(255,215,0,0.16);
+}
+
+.ranking-row.top2 {
+  background: rgba(192,192,192,0.14);
+}
+
+.ranking-row.top3 {
+  background: rgba(205,127,50,0.16);
+}
+
+.ranking-left {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+.ranking-rank {
+  font-weight:700;
+  width:26px;
+  text-align:center;
+}
+
+.ranking-name {
+  font-weight:600;
+}
+
+.ranking-score {
+  font-weight:700;
+}
+
 @media (max-width:768px){
   .item{ width:90%; }
   button{ font-size:18px; padding:14px; }
   .container{ margin-top:40px; }
+  .ranking-row { font-size:15px; }
 }
 </style>
 </head>
@@ -157,6 +243,11 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
     <div id="adminInputs"></div>
     <button onclick="saveObjectives()">Valider tous les objectifs</button>
     <button onclick="resetWeekly()">Réinitialiser les objectifs</button>
+  </div>
+
+  <div id="rankingPanel" class="ranking-panel hidden">
+    <h3>Classement du jour</h3>
+    <div id="rankingContent"></div>
   </div>
 
   <div id="items"></div>
@@ -201,6 +292,7 @@ let currentUser = "";
 let globalData = {};
 let cancelTimers = {};
 let unsubscribeSnapshot = null;
+let previousLeaderKeys = {};
 
 function getToday(){
   return new Date().toLocaleDateString("fr-CA", { timeZone:"Europe/Paris" });
@@ -383,6 +475,7 @@ window.login = async function(){
 
   if(currentUser === "Mariama"){
     document.getElementById("adminPanel").classList.remove("hidden");
+    document.getElementById("rankingPanel").classList.remove("hidden");
   }
 
   await initData();
@@ -399,15 +492,64 @@ async function initData(){
   unsubscribeSnapshot = onSnapshot(ref, (docSnap) => {
     globalData = docSnap.data() || {};
     display();
-    if(currentUser === "Mariama") renderAdmin();
+    if(currentUser === "Mariama"){
+      renderAdmin();
+      renderRanking();
+    }
   });
 
   await resetDailyPersonalIfNeeded();
 }
 
+function renderRanking(){
+  const rankingContent = document.getElementById("rankingContent");
+  if(!rankingContent) return;
+
+  const rankingData = storeUsers.map(name => {
+    let total = 0;
+    itemsList.forEach(item => {
+      total += globalData.personal?.[name]?.[item] || 0;
+    });
+    return { name, total };
+  });
+
+  rankingData.sort((a, b) => {
+    if(b.total !== a.total) return b.total - a.total;
+    return a.name.localeCompare(b.name, "fr");
+  });
+
+  const hasSales = rankingData.some(row => row.total > 0);
+
+  if(!hasSales){
+    rankingContent.innerHTML = `<div style="opacity:0.8;">Aucune vente aujourd'hui</div>`;
+    return;
+  }
+
+  rankingContent.innerHTML = rankingData.map((row, index) => {
+    let extraClass = "";
+    let medal = "";
+
+    if(index === 0){ extraClass = "top1"; medal = "🥇"; }
+    else if(index === 1){ extraClass = "top2"; medal = "🥈"; }
+    else if(index === 2){ extraClass = "top3"; medal = "🥉"; }
+
+    return `
+      <div class="ranking-row ${extraClass}">
+        <div class="ranking-left">
+          <div class="ranking-rank">${medal || (index + 1)}</div>
+          <div class="ranking-name">${row.name}</div>
+        </div>
+        <div class="ranking-score">${row.total}</div>
+      </div>
+    `;
+  }).join("");
+}
+
 function display(){
   const container = document.getElementById("items");
   container.innerHTML = "";
+
+  const nextLeaderKeys = {};
 
   itemsList.forEach(item => {
     const initial = globalData.initial?.[item] ?? 0;
@@ -456,10 +598,23 @@ function display(){
       }
     });
 
+    const leaderKey = leaderValue > 0 ? `${leaders.join("|")}::${leaderValue}` : "";
+    nextLeaderKeys[item] = leaderKey;
+
     let leaderHTML = "";
     if(currentUser === "Mariama" && leaderValue > 0){
       const leaderNames = leaders.join(" / ");
-      leaderHTML = `<div style="font-size:13px; margin-top:8px; font-weight:600;">Boutique leader : ${leaderNames} (${leaderValue})</div>`;
+      leaderHTML = `<div style="
+        font-size:13px;
+        margin-top:10px;
+        font-weight:700;
+        color:#FFD700;
+        text-shadow:
+          1px 1px 0 #000,
+         -1px 1px 0 #000,
+          1px -1px 0 #000,
+         -1px -1px 0 #000;
+      ">🏆 Boutique leader : ${leaderNames} (${leaderValue})</div>`;
     }
 
     const cancelAllowed = !!(cancelTimers[item] && Date.now() < cancelTimers[item]);
@@ -475,6 +630,15 @@ function display(){
       div.style.background = "#66cc88";
     } else {
       div.style.background = "#ff7a00";
+    }
+
+    if(
+      currentUser === "Mariama" &&
+      leaderValue > 0 &&
+      previousLeaderKeys[item] !== undefined &&
+      previousLeaderKeys[item] !== leaderKey
+    ){
+      div.classList.add("leader-flash");
     }
 
     const objectifText = diff >= 0
@@ -505,6 +669,8 @@ function display(){
 
     container.appendChild(div);
   });
+
+  previousLeaderKeys = nextLeaderKeys;
 }
 
 window.decrement = async function(item){
