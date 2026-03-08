@@ -122,9 +122,9 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
 }
 
 @media (max-width:768px){
-.item{ width:90%; }
-button{ font-size:18px; padding:14px; }
-.container{ margin-top:40px; }
+  .item{ width:90%; }
+  button{ font-size:18px; padding:14px; }
+  .container{ margin-top:40px; }
 }
 </style>
 </head>
@@ -132,34 +132,34 @@ button{ font-size:18px; padding:14px; }
 <body>
 
 <div class="header">
-<img src="logo-stn.png">
-<h1>Suivi des ventes</h1>
+  <img src="logo-stn.png">
+  <h1>Suivi des ventes</h1>
 </div>
 
 <div id="login" class="container">
-<h2>Connexion</h2>
-<input type="password" id="password" placeholder="Mot de passe">
-<br>
-<button onclick="login()">Entrer</button>
-<p id="error" style="color:red;"></p>
+  <h2>Connexion</h2>
+  <input type="password" id="password" placeholder="Mot de passe">
+  <br>
+  <button onclick="login()">Entrer</button>
+  <p id="error" style="color:red;"></p>
 </div>
 
 <div id="app" class="hidden">
-<h2 id="welcome"></h2>
+  <h2 id="welcome"></h2>
 
-<div id="adminPanel" class="admin-panel hidden">
-<h3>Administration</h3>
-<div id="adminInputs"></div>
-<button onclick="saveObjectives()">Valider tous les objectifs</button>
-<button onclick="resetWeekly()">Réinitialiser les objectifs</button>
-</div>
+  <div id="adminPanel" class="admin-panel hidden">
+    <h3>Administration</h3>
+    <div id="adminInputs"></div>
+    <button onclick="saveObjectives()">Valider tous les objectifs</button>
+    <button onclick="resetWeekly()">Réinitialiser les objectifs</button>
+  </div>
 
-<div id="items"></div>
+  <div id="items"></div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
@@ -172,7 +172,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const ref = doc(db,"global","objectifs");
+const ref = doc(db, "global", "objectifs");
 
 const passwords = {
   "medine":"Le Havre",
@@ -189,96 +189,217 @@ const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","C
 let currentUser = "";
 let globalData = {};
 let cancelTimers = {};
+let unsubscribeSnapshot = null;
 
 function getToday(){
-  return new Date().toLocaleDateString("fr-CA",{timeZone:"Europe/Paris"});
+  return new Date().toLocaleDateString("fr-CA", { timeZone:"Europe/Paris" });
+}
+
+function buildEmptyPersonal(){
+  const personal = {};
+  Object.values(passwords).forEach(userName => {
+    personal[userName] = {};
+    itemsList.forEach(item => {
+      personal[userName][item] = 0;
+    });
+  });
+  return personal;
+}
+
+function buildEmptyItemMap(){
+  const map = {};
+  itemsList.forEach(item => {
+    map[item] = 0;
+  });
+  return map;
+}
+
+function computeSectorTotalFromPersonal(personal){
+  const sectorTotal = {};
+  itemsList.forEach(item => {
+    let total = 0;
+    Object.values(passwords).forEach(name => {
+      if(name !== "Mariama"){
+        total += personal?.[name]?.[item] || 0;
+      }
+    });
+    sectorTotal[item] = total;
+  });
+  return sectorTotal;
+}
+
+async function ensureDataStructure(){
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+
+    if(!snap.exists()){
+      const data = {
+        personal: buildEmptyPersonal(),
+        initial: buildEmptyItemMap(),
+        sectorTotal: buildEmptyItemMap(),
+        lastPersonalReset: getToday()
+      };
+
+      itemsList.forEach(item => {
+        data[item] = 0;
+      });
+
+      transaction.set(ref, data);
+      return;
+    }
+
+    const data = snap.data();
+    let patch = {};
+    let needsPatch = false;
+
+    const safePersonal = data.personal || {};
+    let patchedPersonal = null;
+    let personalChanged = false;
+
+    Object.values(passwords).forEach(userName => {
+      if(!safePersonal[userName]){
+        if(!patchedPersonal) patchedPersonal = structuredClone(safePersonal);
+        patchedPersonal[userName] = {};
+        itemsList.forEach(item => patchedPersonal[userName][item] = 0);
+        personalChanged = true;
+        return;
+      }
+
+      itemsList.forEach(item => {
+        if(typeof safePersonal[userName][item] !== "number"){
+          if(!patchedPersonal) patchedPersonal = structuredClone(safePersonal);
+          if(!patchedPersonal[userName]) patchedPersonal[userName] = {};
+          patchedPersonal[userName][item] = 0;
+          personalChanged = true;
+        }
+      });
+    });
+
+    if(personalChanged){
+      patch.personal = patchedPersonal;
+      needsPatch = true;
+    }
+
+    const safeInitial = data.initial || {};
+    let patchedInitial = { ...safeInitial };
+    let initialChanged = false;
+
+    itemsList.forEach(item => {
+      if(typeof safeInitial[item] !== "number"){
+        patchedInitial[item] = 0;
+        initialChanged = true;
+      }
+    });
+
+    if(initialChanged){
+      patch.initial = patchedInitial;
+      needsPatch = true;
+    }
+
+    const currentPersonal = personalChanged ? patchedPersonal : safePersonal;
+    const safeSectorTotal = data.sectorTotal || {};
+    let patchedSectorTotal = { ...safeSectorTotal };
+    let sectorTotalChanged = false;
+
+    itemsList.forEach(item => {
+      if(typeof safeSectorTotal[item] !== "number"){
+        patchedSectorTotal[item] = computeSectorTotalFromPersonal(currentPersonal)[item] || 0;
+        sectorTotalChanged = true;
+      }
+    });
+
+    if(sectorTotalChanged){
+      patch.sectorTotal = patchedSectorTotal;
+      needsPatch = true;
+    }
+
+    if(typeof data.lastPersonalReset !== "string"){
+      patch.lastPersonalReset = getToday();
+      needsPatch = true;
+    }
+
+    let topLevelChanged = false;
+    itemsList.forEach(item => {
+      if(typeof data[item] !== "number"){
+        patch[item] = 0;
+        topLevelChanged = true;
+      }
+    });
+
+    if(topLevelChanged){
+      needsPatch = true;
+    }
+
+    if(needsPatch){
+      transaction.set(ref, patch, { merge:true });
+    }
+  });
+}
+
+async function resetDailyPersonalIfNeeded(){
+  const today = getToday();
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+
+    const data = snap.data();
+    if(data.lastPersonalReset === today) return;
+
+    transaction.set(ref, {
+      personal: buildEmptyPersonal(),
+      lastPersonalReset: today
+    }, { merge:true });
+  });
 }
 
 window.login = async function(){
   const pass = document.getElementById("password").value;
 
-  if(passwords[pass]){
-    currentUser = passwords[pass];
-    document.getElementById("login").classList.add("hidden");
-    document.getElementById("app").classList.remove("hidden");
-    document.getElementById("welcome").innerText = "Bienvenue " + currentUser;
-
-    if(currentUser === "Mariama"){
-      document.getElementById("adminPanel").classList.remove("hidden");
-    }
-
-    await initData();
-  } else {
+  if(!passwords[pass]){
     document.getElementById("error").innerText = "Mot de passe incorrect";
-  }
-}
-
-async function initData(){
-  const snap = await getDoc(ref);
-
-  if(!snap.exists()){
-    let data = {
-      personal:{},
-      initial:{},
-      sectorTotal:{},
-      lastPersonalReset:getToday(),
-      resetInProgress:false
-    };
-
-    itemsList.forEach(i=>{
-      data[i] = 0;
-      data.initial[i] = 0;
-      data.sectorTotal[i] = 0;
-    });
-
-    Object.values(passwords).forEach(u=>{
-      data.personal[u] = {};
-      itemsList.forEach(i=>data.personal[u][i] = 0);
-    });
-
-    await setDoc(ref, data);
-  }
-
-  const docSnap = await getDoc(ref);
-  globalData = docSnap.data();
-
-  const today = getToday();
-
-  if(globalData.lastPersonalReset !== today && !globalData.resetInProgress){
-    await setDoc(ref,{ resetInProgress:true },{merge:true});
-
-    let resetPersonal = {};
-    Object.values(passwords).forEach(u=>{
-      resetPersonal[u] = {};
-      itemsList.forEach(i=>resetPersonal[u][i] = 0);
-    });
-
-    await setDoc(ref,{
-      personal: resetPersonal,
-      lastPersonalReset: today,
-      resetInProgress: false
-    },{merge:true});
-
     return;
   }
 
-  onSnapshot(ref,(docSnap)=>{
-    globalData = docSnap.data();
+  currentUser = passwords[pass];
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("welcome").innerText = "Bienvenue " + currentUser;
+
+  if(currentUser === "Mariama"){
+    document.getElementById("adminPanel").classList.remove("hidden");
+  }
+
+  await initData();
+};
+
+async function initData(){
+  await ensureDataStructure();
+
+  if(unsubscribeSnapshot){
+    unsubscribeSnapshot();
+    unsubscribeSnapshot = null;
+  }
+
+  unsubscribeSnapshot = onSnapshot(ref, (docSnap) => {
+    globalData = docSnap.data() || {};
     display();
     if(currentUser === "Mariama") renderAdmin();
   });
+
+  await resetDailyPersonalIfNeeded();
 }
 
 function display(){
   const container = document.getElementById("items");
   container.innerHTML = "";
 
-  itemsList.forEach(item=>{
+  itemsList.forEach(item => {
     const initial = globalData.initial?.[item] ?? 0;
     const cumulativeValue = globalData.sectorTotal?.[item] || 0;
 
     let todaySectorValue = 0;
-    Object.values(passwords).forEach(name=>{
+    Object.values(passwords).forEach(name => {
       if(name !== "Mariama"){
         todaySectorValue += globalData.personal?.[name]?.[item] || 0;
       }
@@ -297,17 +418,17 @@ function display(){
     if(percentText >= 100 && percentText < 120) percentColor = "#66cc88";
     if(percentText >= 120) percentColor = "#1e7e34";
 
-    let userValue = (currentUser === "Mariama")
+    const userValue = (currentUser === "Mariama")
       ? todaySectorValue
       : (globalData.personal?.[currentUser]?.[item] || 0);
 
-    let personalText = (currentUser === "Mariama")
+    const personalText = (currentUser === "Mariama")
       ? "Ventes du secteur aujourd'hui"
       : "Ventes de la boutique aujourd'hui";
 
     let detailHTML = "";
     if(currentUser === "Mariama"){
-      Object.values(passwords).forEach(name=>{
+      Object.values(passwords).forEach(name => {
         if(name !== "Mariama"){
           const val = globalData.personal?.[name]?.[item] || 0;
           detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
@@ -315,7 +436,7 @@ function display(){
       });
     }
 
-    const cancelAllowed = cancelTimers[item] && Date.now() < cancelTimers[item];
+    const cancelAllowed = !!(cancelTimers[item] && Date.now() < cancelTimers[item]);
     const canSell = currentUser !== "Mariama";
 
     const div = document.createElement("div");
@@ -351,52 +472,73 @@ window.decrement = async function(item){
   if(currentUser === "Mariama") return;
   if(!confirm("Confirmer cette vente ?")) return;
 
-  const userValue = globalData.personal[currentUser][item] || 0;
   cancelTimers[item] = Date.now() + 20000;
 
-  await setDoc(ref,{
-    personal:{
-      ...globalData.personal,
-      [currentUser]:{
-        ...globalData.personal[currentUser],
-        [item]: userValue + 1
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+
+    const data = snap.data();
+    const currentPersonal = data.personal || {};
+    const currentSectorTotal = data.sectorTotal || {};
+
+    const userItemValue = currentPersonal?.[currentUser]?.[item] || 0;
+    const sectorItemValue = currentSectorTotal?.[item] || 0;
+
+    transaction.set(ref, {
+      personal: {
+        ...currentPersonal,
+        [currentUser]: {
+          ...(currentPersonal[currentUser] || {}),
+          [item]: userItemValue + 1
+        }
+      },
+      sectorTotal: {
+        ...currentSectorTotal,
+        [item]: sectorItemValue + 1
       }
-    },
-    sectorTotal:{
-      ...globalData.sectorTotal,
-      [item]: (globalData.sectorTotal?.[item] || 0) + 1
-    }
-  },{merge:true});
-}
+    }, { merge:true });
+  });
+};
 
 window.cancelSale = async function(item){
   if(currentUser === "Mariama") return;
   if(!cancelTimers[item] || Date.now() > cancelTimers[item]) return;
 
-  const userValue = globalData.personal[currentUser][item] || 0;
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
 
-  await setDoc(ref,{
-    personal:{
-      ...globalData.personal,
-      [currentUser]:{
-        ...globalData.personal[currentUser],
-        [item]: Math.max(userValue - 1, 0)
+    const data = snap.data();
+    const currentPersonal = data.personal || {};
+    const currentSectorTotal = data.sectorTotal || {};
+
+    const userItemValue = currentPersonal?.[currentUser]?.[item] || 0;
+    const sectorItemValue = currentSectorTotal?.[item] || 0;
+
+    transaction.set(ref, {
+      personal: {
+        ...currentPersonal,
+        [currentUser]: {
+          ...(currentPersonal[currentUser] || {}),
+          [item]: Math.max(userItemValue - 1, 0)
+        }
+      },
+      sectorTotal: {
+        ...currentSectorTotal,
+        [item]: Math.max(sectorItemValue - 1, 0)
       }
-    },
-    sectorTotal:{
-      ...globalData.sectorTotal,
-      [item]: Math.max((globalData.sectorTotal?.[item] || 0) - 1, 0)
-    }
-  },{merge:true});
+    }, { merge:true });
+  });
 
   cancelTimers[item] = null;
-}
+};
 
 function renderAdmin(){
   const div = document.getElementById("adminInputs");
   div.innerHTML = "";
 
-  itemsList.forEach(item=>{
+  itemsList.forEach(item => {
     div.innerHTML += `
       <div>
         ${item} :
@@ -410,39 +552,48 @@ window.saveObjectives = async function(){
   if(!confirm("Valider les nouveaux objectifs ?")) return;
 
   let update = {};
-  let initial = {...globalData.initial};
+  let initial = { ...(globalData.initial || {}) };
 
-  itemsList.forEach(item=>{
-    const val = parseInt(document.getElementById("obj-"+item).value) || 0;
+  itemsList.forEach(item => {
+    const val = parseInt(document.getElementById("obj-" + item).value) || 0;
     update[item] = val;
     initial[item] = val;
   });
 
-  await setDoc(ref,{
+  await setDoc(ref, {
     ...update,
     initial: initial
-  },{merge:true});
-}
+  }, { merge:true });
+};
 
 window.resetWeekly = async function(){
-  if(!confirm("Réinitialiser tous les objectifs et ventes ?")) return;
+  if(!confirm("Réinitialiser tous les objectifs ?")) return;
 
-  let reset = {};
-  let initial = {};
-  let sectorTotal = {};
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
 
-  itemsList.forEach(item=>{
-    reset[item] = 0;
-    initial[item] = 0;
-    sectorTotal[item] = 0;
+    const data = snap.data();
+    const currentInitial = data.initial || {};
+    const currentSectorTotal = data.sectorTotal || {};
+
+    const topLevelReset = {};
+    const initialReset = { ...currentInitial };
+    const sectorTotalReset = { ...currentSectorTotal };
+
+    itemsList.forEach(item => {
+      topLevelReset[item] = 0;
+      initialReset[item] = 0;
+      sectorTotalReset[item] = 0;
+    });
+
+    transaction.set(ref, {
+      ...topLevelReset,
+      initial: initialReset,
+      sectorTotal: sectorTotalReset
+    }, { merge:true });
   });
-
-  await setDoc(ref,{
-    ...reset,
-    initial: initial,
-    sectorTotal: sectorTotal
-  },{merge:true});
-}
+};
 </script>
 </body>
 </html>
