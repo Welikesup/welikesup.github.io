@@ -214,9 +214,11 @@ document.getElementById("error").innerText="Mot de passe incorrect";
 }
 
 async function initData(){
+
 const snap=await getDoc(ref);
+
 if(!snap.exists()){
-let data={personal:{},initial:{},lastPersonalReset:getToday()};
+let data={personal:{},initial:{},lastPersonalReset:getToday(),resetInProgress:false};
 itemsList.forEach(i=>{
 data[i]=0;
 data.initial[i]=0;
@@ -228,91 +230,129 @@ itemsList.forEach(i=>data.personal[u][i]=0);
 await setDoc(ref,data);
 }
 
+const docSnap=await getDoc(ref);
+globalData=docSnap.data();
+
+const today=getToday();
+
+if(globalData.lastPersonalReset!==today && !globalData.resetInProgress){
+
+await setDoc(ref,{resetInProgress:true},{merge:true});
+
+let resetPersonal={};
+
+Object.values(passwords).forEach(u=>{
+resetPersonal[u]={};
+itemsList.forEach(i=>resetPersonal[u][i]=0);
+});
+
+await setDoc(ref,{
+personal:resetPersonal,
+lastPersonalReset:today,
+resetInProgress:false
+},{merge:true});
+
+return;
+}
+
 onSnapshot(ref,(docSnap)=>{
 globalData=docSnap.data();
 display();
 if(currentUser==="Mariama") renderAdmin();
 });
+
 }
 
-function display() {
-  const container = document.getElementById("items");
-  container.innerHTML = "";
+function display(){
 
-  itemsList.forEach(item => {
-    const initial = globalData.initial?.[item] ?? 0;
+const container=document.getElementById("items");
+container.innerHTML="";
 
-    // Cumul des ventes pour la barre (identique pour tous)
-    let cumulativeValue = 0;
-    Object.entries(passwords).forEach(([key,name])=>{
-      if(name!=="Mariama"){
-        cumulativeValue += globalData.personal?.[name]?.[item] || 0;
-      }
-    });
+itemsList.forEach(item=>{
 
-    // Calcul objectif restant / dépassé
-    const diff = initial - cumulativeValue;
-    let objectifText = diff >=0 
-        ? `Objectif restant : <strong>${diff}</strong>`
-        : `Objectif dépassé de : <strong>${-diff}</strong>`;
+const initial=globalData.initial?.[item]??0;
 
-    // Barre limitée à 100% visuellement
-    const percentBar = Math.min(initial>0?(cumulativeValue/initial)*100:0,100);
+let cumulativeValue=0;
+Object.values(passwords).forEach(name=>{
+if(name!=="Mariama"){
+cumulativeValue+=globalData.personal?.[name]?.[item]||0;
+}
+});
 
-    // Le texte % peut dépasser 100%
-    const percentText = initial>0 ? (cumulativeValue/initial)*100 : 0;
+const diff=initial-cumulativeValue;
 
-    // Choix de la couleur du texte %
-    let percentColor = "#ff7a00"; // orange
-    if(percentText >= 100 && percentText < 120){
-      percentColor = "#66cc88"; // vert clair doux
-    } else if(percentText >= 120){
-      percentColor = "#1e7e34"; // vert foncé
-    }
+let objectifText=diff>=0
+?`Objectif restant : <strong>${diff}</strong>`
+:`Objectif dépassé de : <strong>${-diff}</strong>`;
 
-    // Valeur à afficher sous la barre
-    let userValue = (currentUser==="Mariama") ? cumulativeValue : (globalData.personal?.[currentUser]?.[item] || 0);
-    let personalText = (currentUser==="Mariama") ? "Ventes du secteur aujourd'hui" : "Ventes de la boutique aujourd'hui";
+const percentBar=Math.min(initial>0?(cumulativeValue/initial)*100:0,100);
+const percentText=initial>0?(cumulativeValue/initial)*100:0;
 
-    // Détail des ventes pour Mariama
-    let detailHTML = "";
-    if(currentUser==="Mariama"){
-      Object.entries(passwords).forEach(([key,name])=>{
-        if(name!=="Mariama"){
-          const val = globalData.personal?.[name]?.[item] || 0;
-          detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
-        }
-      });
-    }
+let percentColor="#ff7a00";
+if(percentText>=100 && percentText<120) percentColor="#66cc88";
+if(percentText>=120) percentColor="#1e7e34";
 
-    const cancelAllowed = cancelTimers[item] && Date.now() < cancelTimers[item];
+let userValue=(currentUser==="Mariama")
+?cumulativeValue
+:(globalData.personal?.[currentUser]?.[item]||0);
 
-    const div=document.createElement("div");
-    div.className="item";
-    if(diff <= 0) div.classList.add("success");
+let personalText=(currentUser==="Mariama")
+?"Ventes du secteur aujourd'hui"
+:"Ventes de la boutique aujourd'hui";
 
-    div.innerHTML=`
-      <h3>${item}</h3>
-      <p>${objectifText}</p>
-      <div class="progress-container">
-        <div class="progress-bar" style="width:${percentBar}%;"></div>
-        <div class="progress-text" style="color:${percentColor};">${percentText.toFixed(0)}%</div>
-      </div>
-      <div class="personal-line">
-        ${personalText} : <strong>${userValue}</strong>
-      </div>
-      ${detailHTML}
-      <button class="validate" onclick="decrement('${item}')">Valider une vente</button>
-      <button class="cancel" ${!cancelAllowed?"disabled":""} onclick="cancelSale('${item}')">Annuler</button>
-    `;
-    container.appendChild(div);
-  });
+let detailHTML="";
+if(currentUser==="Mariama"){
+Object.values(passwords).forEach(name=>{
+if(name!=="Mariama"){
+const val=globalData.personal?.[name]?.[item]||0;
+detailHTML+=`<div style="font-size:12px">${name} : ${val}</div>`;
+}
+});
+}
+
+const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
+const canSell=currentUser!=="Mariama";
+
+const div=document.createElement("div");
+div.className="item";
+if(diff<=0) div.classList.add("success");
+
+div.innerHTML=`
+<h3>${item}</h3>
+<p>${objectifText}</p>
+
+<div class="progress-container">
+<div class="progress-bar" style="width:${percentBar}%"></div>
+<div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
+</div>
+
+<div class="personal-line">
+${personalText} : <strong>${userValue}</strong>
+</div>
+
+${detailHTML}
+
+${canSell?`<button class="validate" onclick="decrement('${item}')">Valider une vente</button>`:""}
+
+<button class="cancel" ${!cancelAllowed?"disabled":""} onclick="cancelSale('${item}')">Annuler</button>
+`;
+
+container.appendChild(div);
+
+});
+
 }
 
 window.decrement=async function(item){
+
+if(currentUser==="Mariama") return;
+
 if(!confirm("Confirmer cette vente ?")) return;
-const userValue = globalData.personal[currentUser][item] || 0;
-cancelTimers[item] = Date.now() + 20000;
+
+const userValue=globalData.personal[currentUser][item]||0;
+
+cancelTimers[item]=Date.now()+20000;
+
 await setDoc(ref,{
 personal:{
 ...globalData.personal,
@@ -322,28 +362,34 @@ personal:{
 }
 }
 },{merge:true});
-display();
+
 }
 
 window.cancelSale=async function(item){
+
 if(!cancelTimers[item] || Date.now()>cancelTimers[item]) return;
-const userValue = globalData.personal[currentUser][item] || 0;
+
+const userValue=globalData.personal[currentUser][item]||0;
+
 await setDoc(ref,{
 personal:{
 ...globalData.personal,
 [currentUser]:{
 ...globalData.personal[currentUser],
-[item]:userValue-1
+[item]:Math.max(userValue-1,0)
 }
 }
 },{merge:true});
+
 cancelTimers[item]=null;
-display();
+
 }
 
 function renderAdmin(){
+
 const div=document.getElementById("adminInputs");
 div.innerHTML="";
+
 itemsList.forEach(item=>{
 div.innerHTML+=`
 <div>
@@ -352,39 +398,46 @@ ${item} :
 </div>
 `;
 });
+
 }
 
-window.saveObjectives = async function() {
-  if(!confirm("Valider les nouveaux objectifs ?")) return;
-  let update = {};
-  let initial = {...globalData.initial};
-  let currentKPI = {...globalData};
-  itemsList.forEach(item => {
-    const val = parseInt(document.getElementById("obj-"+item).value) || 0;
-    update[item] = val;
-    initial[item] = val;
-  });
-  await setDoc(ref, {
-    ...currentKPI,
-    ...update,
-    initial: initial
-  }, {merge:true});
-  display();
+window.saveObjectives=async function(){
+
+if(!confirm("Valider les nouveaux objectifs ?")) return;
+
+let update={};
+let initial={...globalData.initial};
+
+itemsList.forEach(item=>{
+const val=parseInt(document.getElementById("obj-"+item).value)||0;
+update[item]=val;
+initial[item]=val;
+});
+
+await setDoc(ref,{
+...update,
+initial:initial
+},{merge:true});
+
 }
 
-window.resetWeekly = async function() {
-  if(!confirm("Réinitialiser tous les objectifs et ventes ?")) return;
-  let reset = {};
-  let currentKPI = {...globalData};
-  itemsList.forEach(item => {
-    reset[item] = 0;
-    currentKPI.initial[item] = 0;
-  });
-  await setDoc(ref, {
-    ...currentKPI,
-    ...reset
-  }, {merge:true});
-  display();
+window.resetWeekly=async function(){
+
+if(!confirm("Réinitialiser tous les objectifs et ventes ?")) return;
+
+let reset={};
+let initial={};
+
+itemsList.forEach(item=>{
+reset[item]=0;
+initial[item]=0;
+});
+
+await setDoc(ref,{
+...reset,
+initial:initial
+},{merge:true});
+
 }
 
 </script>
