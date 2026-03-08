@@ -180,7 +180,7 @@ const db = getFirestore(app);
 const ref = doc(db, "global", "objectifs");
 
 /* Mots de passe hashés SHA-256
-   Mots de passe d'origine conservés :
+   Mots de passe d'origine :
    medine, dembele, johannes, orelsan, lincheneau, riles, secteurstn
 */
 const passwords = {
@@ -442,24 +442,24 @@ function display(){
       });
     }
 
-    let leaderName = "";
-    let leaderValue = -1;
+    let leaderValue = 0;
+    let leaders = [];
 
     storeUsers.forEach(name => {
       const val = globalData.personal?.[name]?.[item] || 0;
+
       if(val > leaderValue){
         leaderValue = val;
-        leaderName = name;
+        leaders = [name];
+      } else if(val === leaderValue && val > 0){
+        leaders.push(name);
       }
     });
 
     let leaderHTML = "";
-    if(currentUser === "Mariama"){
-      if(leaderValue > 0){
-        leaderHTML = `<div style="font-size:13px; margin-top:8px; font-weight:600;">Boutique leader : ${leaderName} (${leaderValue})</div>`;
-      } else {
-        leaderHTML = `<div style="font-size:13px; margin-top:8px; font-weight:600;">Boutique leader : aucune vente</div>`;
-      }
+    if(currentUser === "Mariama" && leaderValue > 0){
+      const leaderNames = leaders.join(" / ");
+      leaderHTML = `<div style="font-size:13px; margin-top:8px; font-weight:600;">Boutique leader : ${leaderNames} (${leaderValue})</div>`;
     }
 
     const cancelAllowed = !!(cancelTimers[item] && Date.now() < cancelTimers[item]);
