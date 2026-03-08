@@ -145,7 +145,6 @@ button{ font-size:18px; padding:14px; }
 </div>
 
 <div id="app" class="hidden">
-
 <h2 id="welcome"></h2>
 
 <div id="adminPanel" class="admin-panel hidden">
@@ -156,290 +155,287 @@ button{ font-size:18px; padding:14px; }
 </div>
 
 <div id="items"></div>
-
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-apiKey: "AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
-authDomain: "compteur-stn.firebaseapp.com",
-projectId: "compteur-stn",
-storageBucket: "compteur-stn.firebasestorage.app",
-messagingSenderId: "661197584248",
-appId: "1:661197584248:web:1dc33900c4422df4c53a8d"
+  apiKey: "AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
+  authDomain: "compteur-stn.firebaseapp.com",
+  projectId: "compteur-stn",
+  storageBucket: "compteur-stn.firebasestorage.app",
+  messagingSenderId: "661197584248",
+  appId: "1:661197584248:web:1dc33900c4422df4c53a8d"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const ref = doc(db,"global","objectifs");
 
-const passwords={
-"medine":"Le Havre",
-"dembele":"Evreux",
-"johannes":"Mondeville",
-"orelsan":"Caen",
-"lincheneau":"La Glacerie",
-"riles":"Rouen",
-"secteurstn":"Mariama"
+const passwords = {
+  "medine":"Le Havre",
+  "dembele":"Evreux",
+  "johannes":"Mondeville",
+  "orelsan":"Caen",
+  "lincheneau":"La Glacerie",
+  "riles":"Rouen",
+  "secteurstn":"Mariama"
 };
 
-const itemsList=["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
+const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
 
-let currentUser="";
-let globalData={};
-let cancelTimers={};
+let currentUser = "";
+let globalData = {};
+let cancelTimers = {};
 
 function getToday(){
-return new Date().toLocaleDateString("fr-CA",{timeZone:"Europe/Paris"});
+  return new Date().toLocaleDateString("fr-CA",{timeZone:"Europe/Paris"});
 }
 
-window.login=async function(){
-const pass=document.getElementById("password").value;
-if(passwords[pass]){
-currentUser=passwords[pass];
-document.getElementById("login").classList.add("hidden");
-document.getElementById("app").classList.remove("hidden");
-document.getElementById("welcome").innerText="Bienvenue "+currentUser;
-if(currentUser==="Mariama"){
-document.getElementById("adminPanel").classList.remove("hidden");
-}
-await initData();
-}else{
-document.getElementById("error").innerText="Mot de passe incorrect";
-}
+window.login = async function(){
+  const pass = document.getElementById("password").value;
+
+  if(passwords[pass]){
+    currentUser = passwords[pass];
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.getElementById("welcome").innerText = "Bienvenue " + currentUser;
+
+    if(currentUser === "Mariama"){
+      document.getElementById("adminPanel").classList.remove("hidden");
+    }
+
+    await initData();
+  } else {
+    document.getElementById("error").innerText = "Mot de passe incorrect";
+  }
 }
 
 async function initData(){
+  const snap = await getDoc(ref);
 
-const snap=await getDoc(ref);
+  if(!snap.exists()){
+    let data = {
+      personal:{},
+      initial:{},
+      sectorTotal:{},
+      lastPersonalReset:getToday(),
+      resetInProgress:false
+    };
 
-if(!snap.exists()){
-let data={personal:{},initial:{},lastPersonalReset:getToday(),resetInProgress:false};
-itemsList.forEach(i=>{
-data[i]=0;
-data.initial[i]=0;
-});
-Object.values(passwords).forEach(u=>{
-data.personal[u]={};
-itemsList.forEach(i=>data.personal[u][i]=0);
-});
-await setDoc(ref,data);
-}
+    itemsList.forEach(i=>{
+      data[i] = 0;
+      data.initial[i] = 0;
+      data.sectorTotal[i] = 0;
+    });
 
-const docSnap=await getDoc(ref);
-globalData=docSnap.data();
+    Object.values(passwords).forEach(u=>{
+      data.personal[u] = {};
+      itemsList.forEach(i=>data.personal[u][i] = 0);
+    });
 
-const today=getToday();
+    await setDoc(ref, data);
+  }
 
-if(globalData.lastPersonalReset!==today && !globalData.resetInProgress){
+  const docSnap = await getDoc(ref);
+  globalData = docSnap.data();
 
-await setDoc(ref,{resetInProgress:true},{merge:true});
+  const today = getToday();
 
-let resetPersonal={};
+  if(globalData.lastPersonalReset !== today && !globalData.resetInProgress){
+    await setDoc(ref,{ resetInProgress:true },{merge:true});
 
-Object.values(passwords).forEach(u=>{
-resetPersonal[u]={};
-itemsList.forEach(i=>resetPersonal[u][i]=0);
-});
+    let resetPersonal = {};
+    Object.values(passwords).forEach(u=>{
+      resetPersonal[u] = {};
+      itemsList.forEach(i=>resetPersonal[u][i] = 0);
+    });
 
-await setDoc(ref,{
-personal:resetPersonal,
-lastPersonalReset:today,
-resetInProgress:false
-},{merge:true});
+    await setDoc(ref,{
+      personal: resetPersonal,
+      lastPersonalReset: today,
+      resetInProgress: false
+    },{merge:true});
 
-return;
-}
+    return;
+  }
 
-onSnapshot(ref,(docSnap)=>{
-globalData=docSnap.data();
-display();
-if(currentUser==="Mariama") renderAdmin();
-});
-
+  onSnapshot(ref,(docSnap)=>{
+    globalData = docSnap.data();
+    display();
+    if(currentUser === "Mariama") renderAdmin();
+  });
 }
 
 function display(){
+  const container = document.getElementById("items");
+  container.innerHTML = "";
 
-const container=document.getElementById("items");
-container.innerHTML="";
+  itemsList.forEach(item=>{
+    const initial = globalData.initial?.[item] ?? 0;
+    const cumulativeValue = globalData.sectorTotal?.[item] || 0;
 
-itemsList.forEach(item=>{
+    const diff = initial - cumulativeValue;
 
-const initial=globalData.initial?.[item]??0;
+    let objectifText = diff >= 0
+      ? `Objectif restant : <strong>${diff}</strong>`
+      : `Objectif dépassé de : <strong>${-diff}</strong>`;
 
-let cumulativeValue=0;
-Object.values(passwords).forEach(name=>{
-if(name!=="Mariama"){
-cumulativeValue+=globalData.personal?.[name]?.[item]||0;
-}
-});
+    const percentBar = Math.min(initial > 0 ? (cumulativeValue / initial) * 100 : 0, 100);
+    const percentText = initial > 0 ? (cumulativeValue / initial) * 100 : 0;
 
-const diff=initial-cumulativeValue;
+    let percentColor = "#ff7a00";
+    if(percentText >= 100 && percentText < 120) percentColor = "#66cc88";
+    if(percentText >= 120) percentColor = "#1e7e34";
 
-let objectifText=diff>=0
-?`Objectif restant : <strong>${diff}</strong>`
-:`Objectif dépassé de : <strong>${-diff}</strong>`;
+    let userValue = (currentUser === "Mariama")
+      ? cumulativeValue
+      : (globalData.personal?.[currentUser]?.[item] || 0);
 
-const percentBar=Math.min(initial>0?(cumulativeValue/initial)*100:0,100);
-const percentText=initial>0?(cumulativeValue/initial)*100:0;
+    let personalText = (currentUser === "Mariama")
+      ? "Ventes du secteur aujourd'hui"
+      : "Ventes de la boutique aujourd'hui";
 
-let percentColor="#ff7a00";
-if(percentText>=100 && percentText<120) percentColor="#66cc88";
-if(percentText>=120) percentColor="#1e7e34";
+    let detailHTML = "";
+    if(currentUser === "Mariama"){
+      Object.values(passwords).forEach(name=>{
+        if(name !== "Mariama"){
+          const val = globalData.personal?.[name]?.[item] || 0;
+          detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
+        }
+      });
+    }
 
-let userValue=(currentUser==="Mariama")
-?cumulativeValue
-:(globalData.personal?.[currentUser]?.[item]||0);
+    const cancelAllowed = cancelTimers[item] && Date.now() < cancelTimers[item];
+    const canSell = currentUser !== "Mariama";
 
-let personalText=(currentUser==="Mariama")
-?"Ventes du secteur aujourd'hui"
-:"Ventes de la boutique aujourd'hui";
+    const div = document.createElement("div");
+    div.className = "item";
+    if(diff <= 0) div.classList.add("success");
 
-let detailHTML="";
-if(currentUser==="Mariama"){
-Object.values(passwords).forEach(name=>{
-if(name!=="Mariama"){
-const val=globalData.personal?.[name]?.[item]||0;
-detailHTML+=`<div style="font-size:12px">${name} : ${val}</div>`;
-}
-});
-}
+    div.innerHTML = `
+      <h3>${item}</h3>
+      <p>${objectifText}</p>
 
-const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
-const canSell=currentUser!=="Mariama";
+      <div class="progress-container">
+        <div class="progress-bar" style="width:${percentBar}%"></div>
+        <div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
+      </div>
 
-const div=document.createElement("div");
-div.className="item";
-if(diff<=0) div.classList.add("success");
+      <div class="personal-line">
+        ${personalText} : <strong>${userValue}</strong>
+      </div>
 
-div.innerHTML=`
-<h3>${item}</h3>
-<p>${objectifText}</p>
+      ${detailHTML}
 
-<div class="progress-container">
-<div class="progress-bar" style="width:${percentBar}%"></div>
-<div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
-</div>
+      ${canSell ? `
+        <button class="validate" onclick="decrement('${item}')">Valider une vente</button>
+        <button class="cancel" ${!cancelAllowed ? "disabled" : ""} onclick="cancelSale('${item}')">Annuler</button>
+      ` : ""}
+    `;
 
-<div class="personal-line">
-${personalText} : <strong>${userValue}</strong>
-</div>
-
-${detailHTML}
-
-${canSell?`<button class="validate" onclick="decrement('${item}')">Valider une vente</button>`:""}
-
-<button class="cancel" ${!cancelAllowed?"disabled":""} onclick="cancelSale('${item}')">Annuler</button>
-`;
-
-container.appendChild(div);
-
-});
-
+    container.appendChild(div);
+  });
 }
 
-window.decrement=async function(item){
+window.decrement = async function(item){
+  if(currentUser === "Mariama") return;
+  if(!confirm("Confirmer cette vente ?")) return;
 
-if(currentUser==="Mariama") return;
+  const userValue = globalData.personal[currentUser][item] || 0;
+  cancelTimers[item] = Date.now() + 20000;
 
-if(!confirm("Confirmer cette vente ?")) return;
-
-const userValue=globalData.personal[currentUser][item]||0;
-
-cancelTimers[item]=Date.now()+20000;
-
-await setDoc(ref,{
-personal:{
-...globalData.personal,
-[currentUser]:{
-...globalData.personal[currentUser],
-[item]:userValue+1
+  await setDoc(ref,{
+    personal:{
+      ...globalData.personal,
+      [currentUser]:{
+        ...globalData.personal[currentUser],
+        [item]: userValue + 1
+      }
+    },
+    sectorTotal:{
+      ...globalData.sectorTotal,
+      [item]: (globalData.sectorTotal?.[item] || 0) + 1
+    }
+  },{merge:true});
 }
-}
-},{merge:true});
 
-}
+window.cancelSale = async function(item){
+  if(currentUser === "Mariama") return;
+  if(!cancelTimers[item] || Date.now() > cancelTimers[item]) return;
 
-window.cancelSale=async function(item){
+  const userValue = globalData.personal[currentUser][item] || 0;
 
-if(!cancelTimers[item] || Date.now()>cancelTimers[item]) return;
+  await setDoc(ref,{
+    personal:{
+      ...globalData.personal,
+      [currentUser]:{
+        ...globalData.personal[currentUser],
+        [item]: Math.max(userValue - 1, 0)
+      }
+    },
+    sectorTotal:{
+      ...globalData.sectorTotal,
+      [item]: Math.max((globalData.sectorTotal?.[item] || 0) - 1, 0)
+    }
+  },{merge:true});
 
-const userValue=globalData.personal[currentUser][item]||0;
-
-await setDoc(ref,{
-personal:{
-...globalData.personal,
-[currentUser]:{
-...globalData.personal[currentUser],
-[item]:Math.max(userValue-1,0)
-}
-}
-},{merge:true});
-
-cancelTimers[item]=null;
-
+  cancelTimers[item] = null;
 }
 
 function renderAdmin(){
+  const div = document.getElementById("adminInputs");
+  div.innerHTML = "";
 
-const div=document.getElementById("adminInputs");
-div.innerHTML="";
-
-itemsList.forEach(item=>{
-div.innerHTML+=`
-<div>
-${item} :
-<input type="number" id="obj-${item}" value="${globalData[item]||0}">
-</div>
-`;
-});
-
+  itemsList.forEach(item=>{
+    div.innerHTML += `
+      <div>
+        ${item} :
+        <input type="number" id="obj-${item}" value="${globalData[item] || 0}">
+      </div>
+    `;
+  });
 }
 
-window.saveObjectives=async function(){
+window.saveObjectives = async function(){
+  if(!confirm("Valider les nouveaux objectifs ?")) return;
 
-if(!confirm("Valider les nouveaux objectifs ?")) return;
+  let update = {};
+  let initial = {...globalData.initial};
 
-let update={};
-let initial={...globalData.initial};
+  itemsList.forEach(item=>{
+    const val = parseInt(document.getElementById("obj-"+item).value) || 0;
+    update[item] = val;
+    initial[item] = val;
+  });
 
-itemsList.forEach(item=>{
-const val=parseInt(document.getElementById("obj-"+item).value)||0;
-update[item]=val;
-initial[item]=val;
-});
-
-await setDoc(ref,{
-...update,
-initial:initial
-},{merge:true});
-
+  await setDoc(ref,{
+    ...update,
+    initial: initial
+  },{merge:true});
 }
 
-window.resetWeekly=async function(){
+window.resetWeekly = async function(){
+  if(!confirm("Réinitialiser tous les objectifs et ventes ?")) return;
 
-if(!confirm("Réinitialiser tous les objectifs et ventes ?")) return;
+  let reset = {};
+  let initial = {};
+  let sectorTotal = {};
 
-let reset={};
-let initial={};
+  itemsList.forEach(item=>{
+    reset[item] = 0;
+    initial[item] = 0;
+    sectorTotal[item] = 0;
+  });
 
-itemsList.forEach(item=>{
-reset[item]=0;
-initial[item]=0;
-});
-
-await setDoc(ref,{
-...reset,
-initial:initial
-},{merge:true});
-
+  await setDoc(ref,{
+    ...reset,
+    initial: initial,
+    sectorTotal: sectorTotal
+  },{merge:true});
 }
-
 </script>
 </body>
 </html>
