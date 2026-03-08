@@ -80,7 +80,12 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
 
 .item:hover { transform: translateY(-6px); }
 
-.item.success { background: #1e7e34; }
+.item.glow {
+  box-shadow:
+    0 0 10px rgba(30,126,52,0.7),
+    0 0 20px rgba(30,126,52,0.6),
+    0 0 30px rgba(30,126,52,0.5);
+}
 
 .progress-container {
   background: rgba(255,255,255,0.3);
@@ -122,9 +127,9 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
 }
 
 @media (max-width:768px){
-  .item{ width:90%; }
-  button{ font-size:18px; padding:14px; }
-  .container{ margin-top:40px; }
+.item{ width:90%; }
+button{ font-size:18px; padding:14px; }
+.container{ margin-top:40px; }
 }
 </style>
 </head>
@@ -132,29 +137,29 @@ button.cancel:disabled { opacity:0.3; cursor:not-allowed; }
 <body>
 
 <div class="header">
-  <img src="logo-stn.png">
-  <h1>Suivi des ventes</h1>
+<img src="logo-stn.png">
+<h1>Suivi des ventes</h1>
 </div>
 
 <div id="login" class="container">
-  <h2>Connexion</h2>
-  <input type="password" id="password" placeholder="Mot de passe">
-  <br>
-  <button onclick="login()">Entrer</button>
-  <p id="error" style="color:red;"></p>
+<h2>Connexion</h2>
+<input type="password" id="password" placeholder="Mot de passe">
+<br>
+<button onclick="login()">Entrer</button>
+<p id="error" style="color:red;"></p>
 </div>
 
 <div id="app" class="hidden">
-  <h2 id="welcome"></h2>
+<h2 id="welcome"></h2>
 
-  <div id="adminPanel" class="admin-panel hidden">
-    <h3>Administration</h3>
-    <div id="adminInputs"></div>
-    <button onclick="saveObjectives()">Valider tous les objectifs</button>
-    <button onclick="resetWeekly()">Réinitialiser les objectifs</button>
-  </div>
+<div id="adminPanel" class="admin-panel hidden">
+<h3>Administration</h3>
+<div id="adminInputs"></div>
+<button onclick="saveObjectives()">Valider tous les objectifs</button>
+<button onclick="resetWeekly()">Réinitialiser les objectifs</button>
+</div>
 
-  <div id="items"></div>
+<div id="items"></div>
 </div>
 
 <script type="module">
@@ -162,438 +167,165 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getFirestore, doc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
-  authDomain: "compteur-stn.firebaseapp.com",
-  projectId: "compteur-stn",
-  storageBucket: "compteur-stn.firebasestorage.app",
-  messagingSenderId: "661197584248",
-  appId: "1:661197584248:web:1dc33900c4422df4c53a8d"
+apiKey: "AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
+authDomain: "compteur-stn.firebaseapp.com",
+projectId: "compteur-stn",
+storageBucket: "compteur-stn.firebasestorage.app",
+messagingSenderId: "661197584248",
+appId: "1:661197584248:web:1dc33900c4422df4c53a8d"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const ref = doc(db, "global", "objectifs");
+const ref = doc(db,"global","objectifs");
 
-const passwords = {
-  "medine":"Le Havre",
-  "dembele":"Evreux",
-  "johannes":"Mondeville",
-  "orelsan":"Caen",
-  "lincheneau":"La Glacerie",
-  "riles":"Rouen",
-  "secteurstn":"Mariama"
+const passwords={
+"medine":"Le Havre",
+"dembele":"Evreux",
+"johannes":"Mondeville",
+"orelsan":"Caen",
+"lincheneau":"La Glacerie",
+"riles":"Rouen",
+"secteurstn":"Mariama"
 };
 
-const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
+const itemsList=["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
 
-let currentUser = "";
-let globalData = {};
-let cancelTimers = {};
-let unsubscribeSnapshot = null;
+let currentUser="";
+let globalData={};
+let cancelTimers={};
+let unsubscribeSnapshot=null;
 
 function getToday(){
-  return new Date().toLocaleDateString("fr-CA", { timeZone:"Europe/Paris" });
+return new Date().toLocaleDateString("fr-CA",{timeZone:"Europe/Paris"});
 }
 
-function buildEmptyPersonal(){
-  const personal = {};
-  Object.values(passwords).forEach(userName => {
-    personal[userName] = {};
-    itemsList.forEach(item => {
-      personal[userName][item] = 0;
-    });
-  });
-  return personal;
+window.login=async function(){
+const pass=document.getElementById("password").value;
+
+if(!passwords[pass]){
+document.getElementById("error").innerText="Mot de passe incorrect";
+return;
 }
 
-function buildEmptyItemMap(){
-  const map = {};
-  itemsList.forEach(item => {
-    map[item] = 0;
-  });
-  return map;
+currentUser=passwords[pass];
+
+document.getElementById("login").classList.add("hidden");
+document.getElementById("app").classList.remove("hidden");
+
+document.getElementById("welcome").innerText="Bienvenue "+currentUser;
+
+if(currentUser==="Mariama"){
+document.getElementById("adminPanel").classList.remove("hidden");
 }
 
-function computeSectorTotalFromPersonal(personal){
-  const sectorTotal = {};
-  itemsList.forEach(item => {
-    let total = 0;
-    Object.values(passwords).forEach(name => {
-      if(name !== "Mariama"){
-        total += personal?.[name]?.[item] || 0;
-      }
-    });
-    sectorTotal[item] = total;
-  });
-  return sectorTotal;
-}
-
-async function ensureDataStructure(){
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-
-    if(!snap.exists()){
-      const data = {
-        personal: buildEmptyPersonal(),
-        initial: buildEmptyItemMap(),
-        sectorTotal: buildEmptyItemMap(),
-        lastPersonalReset: getToday()
-      };
-
-      itemsList.forEach(item => {
-        data[item] = 0;
-      });
-
-      transaction.set(ref, data);
-      return;
-    }
-
-    const data = snap.data();
-    let patch = {};
-    let needsPatch = false;
-
-    const safePersonal = data.personal || {};
-    let patchedPersonal = null;
-    let personalChanged = false;
-
-    Object.values(passwords).forEach(userName => {
-      if(!safePersonal[userName]){
-        if(!patchedPersonal) patchedPersonal = structuredClone(safePersonal);
-        patchedPersonal[userName] = {};
-        itemsList.forEach(item => patchedPersonal[userName][item] = 0);
-        personalChanged = true;
-        return;
-      }
-
-      itemsList.forEach(item => {
-        if(typeof safePersonal[userName][item] !== "number"){
-          if(!patchedPersonal) patchedPersonal = structuredClone(safePersonal);
-          if(!patchedPersonal[userName]) patchedPersonal[userName] = {};
-          patchedPersonal[userName][item] = 0;
-          personalChanged = true;
-        }
-      });
-    });
-
-    if(personalChanged){
-      patch.personal = patchedPersonal;
-      needsPatch = true;
-    }
-
-    const safeInitial = data.initial || {};
-    let patchedInitial = { ...safeInitial };
-    let initialChanged = false;
-
-    itemsList.forEach(item => {
-      if(typeof safeInitial[item] !== "number"){
-        patchedInitial[item] = 0;
-        initialChanged = true;
-      }
-    });
-
-    if(initialChanged){
-      patch.initial = patchedInitial;
-      needsPatch = true;
-    }
-
-    const currentPersonal = personalChanged ? patchedPersonal : safePersonal;
-    const safeSectorTotal = data.sectorTotal || {};
-    let patchedSectorTotal = { ...safeSectorTotal };
-    let sectorTotalChanged = false;
-
-    itemsList.forEach(item => {
-      if(typeof safeSectorTotal[item] !== "number"){
-        patchedSectorTotal[item] = computeSectorTotalFromPersonal(currentPersonal)[item] || 0;
-        sectorTotalChanged = true;
-      }
-    });
-
-    if(sectorTotalChanged){
-      patch.sectorTotal = patchedSectorTotal;
-      needsPatch = true;
-    }
-
-    if(typeof data.lastPersonalReset !== "string"){
-      patch.lastPersonalReset = getToday();
-      needsPatch = true;
-    }
-
-    let topLevelChanged = false;
-    itemsList.forEach(item => {
-      if(typeof data[item] !== "number"){
-        patch[item] = 0;
-        topLevelChanged = true;
-      }
-    });
-
-    if(topLevelChanged){
-      needsPatch = true;
-    }
-
-    if(needsPatch){
-      transaction.set(ref, patch, { merge:true });
-    }
-  });
-}
-
-async function resetDailyPersonalIfNeeded(){
-  const today = getToday();
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
-
-    const data = snap.data();
-    if(data.lastPersonalReset === today) return;
-
-    transaction.set(ref, {
-      personal: buildEmptyPersonal(),
-      lastPersonalReset: today
-    }, { merge:true });
-  });
-}
-
-window.login = async function(){
-  const pass = document.getElementById("password").value;
-
-  if(!passwords[pass]){
-    document.getElementById("error").innerText = "Mot de passe incorrect";
-    return;
-  }
-
-  currentUser = passwords[pass];
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-  document.getElementById("welcome").innerText = "Bienvenue " + currentUser;
-
-  if(currentUser === "Mariama"){
-    document.getElementById("adminPanel").classList.remove("hidden");
-  }
-
-  await initData();
+initData();
 };
 
-async function initData(){
-  await ensureDataStructure();
+function initData(){
 
-  if(unsubscribeSnapshot){
-    unsubscribeSnapshot();
-    unsubscribeSnapshot = null;
-  }
+if(unsubscribeSnapshot) unsubscribeSnapshot();
 
-  unsubscribeSnapshot = onSnapshot(ref, (docSnap) => {
-    globalData = docSnap.data() || {};
-    display();
-    if(currentUser === "Mariama") renderAdmin();
-  });
-
-  await resetDailyPersonalIfNeeded();
+unsubscribeSnapshot=onSnapshot(ref,(docSnap)=>{
+globalData=docSnap.data()||{};
+display();
+if(currentUser==="Mariama") renderAdmin();
+});
 }
 
 function display(){
-  const container = document.getElementById("items");
-  container.innerHTML = "";
 
-  itemsList.forEach(item => {
-    const initial = globalData.initial?.[item] ?? 0;
-    const cumulativeValue = globalData.sectorTotal?.[item] || 0;
+const container=document.getElementById("items");
+container.innerHTML="";
 
-    let todaySectorValue = 0;
-    Object.values(passwords).forEach(name => {
-      if(name !== "Mariama"){
-        todaySectorValue += globalData.personal?.[name]?.[item] || 0;
-      }
-    });
+itemsList.forEach(item=>{
 
-    const diff = initial - cumulativeValue;
+const initial=globalData.initial?.[item]??0;
+const cumulativeValue=globalData.sectorTotal?.[item]||0;
 
-    let objectifText = diff >= 0
-      ? `Objectif restant : <strong>${diff}</strong>`
-      : `Objectif dépassé de : <strong>${-diff}</strong>`;
+let todaySectorValue=0;
 
-    const percentBar = Math.min(initial > 0 ? (cumulativeValue / initial) * 100 : 0, 100);
-    const percentText = initial > 0 ? (cumulativeValue / initial) * 100 : 0;
+Object.values(passwords).forEach(name=>{
+if(name!=="Mariama"){
+todaySectorValue+=globalData.personal?.[name]?.[item]||0;
+}
+});
 
-    let percentColor = "#ff7a00";
-    if(percentText >= 100 && percentText < 120) percentColor = "#66cc88";
-    if(percentText >= 120) percentColor = "#1e7e34";
+const diff=initial-cumulativeValue;
 
-    const userValue = (currentUser === "Mariama")
-      ? todaySectorValue
-      : (globalData.personal?.[currentUser]?.[item] || 0);
+const percentBar=Math.min(initial>0?(cumulativeValue/initial)*100:0,100);
+const percentText=initial>0?(cumulativeValue/initial)*100:0;
 
-    const personalText = (currentUser === "Mariama")
-      ? "Ventes du secteur aujourd'hui"
-      : "Ventes de la boutique aujourd'hui";
+let percentColor="#ff7a00";
 
-    let detailHTML = "";
-    if(currentUser === "Mariama"){
-      Object.values(passwords).forEach(name => {
-        if(name !== "Mariama"){
-          const val = globalData.personal?.[name]?.[item] || 0;
-          detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
-        }
-      });
-    }
+if(percentText>=100 && percentText<120) percentColor="#66cc88";
+if(percentText>=120) percentColor="#1e7e34";
 
-    const cancelAllowed = !!(cancelTimers[item] && Date.now() < cancelTimers[item]);
-    const canSell = currentUser !== "Mariama";
+let userValue=(currentUser==="Mariama")
+?todaySectorValue
+:(globalData.personal?.[currentUser]?.[item]||0);
 
-    const div = document.createElement("div");
-    div.className = "item";
-    if(diff <= 0) div.classList.add("success");
+let personalText=(currentUser==="Mariama")
+?"Ventes du secteur aujourd'hui"
+:"Ventes de la boutique aujourd'hui";
 
-    div.innerHTML = `
-      <h3>${item}</h3>
-      <p>${objectifText}</p>
+let detailHTML="";
 
-      <div class="progress-container">
-        <div class="progress-bar" style="width:${percentBar}%"></div>
-        <div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
-      </div>
-
-      <div class="personal-line">
-        ${personalText} : <strong>${userValue}</strong>
-      </div>
-
-      ${detailHTML}
-
-      ${canSell ? `
-        <button class="validate" onclick="decrement('${item}')">Valider une vente</button>
-        <button class="cancel" ${!cancelAllowed ? "disabled" : ""} onclick="cancelSale('${item}')">Annuler</button>
-      ` : ""}
-    `;
-
-    container.appendChild(div);
-  });
+if(currentUser==="Mariama"){
+Object.values(passwords).forEach(name=>{
+if(name!=="Mariama"){
+const val=globalData.personal?.[name]?.[item]||0;
+detailHTML+=`<div style="font-size:12px">${name} : ${val}</div>`;
+}
+});
 }
 
-window.decrement = async function(item){
-  if(currentUser === "Mariama") return;
-  if(!confirm("Confirmer cette vente ?")) return;
+const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
+const canSell=currentUser!=="Mariama";
 
-  cancelTimers[item] = Date.now() + 20000;
+const div=document.createElement("div");
+div.className="item";
 
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
-
-    const data = snap.data();
-    const currentPersonal = data.personal || {};
-    const currentSectorTotal = data.sectorTotal || {};
-
-    const userItemValue = currentPersonal?.[currentUser]?.[item] || 0;
-    const sectorItemValue = currentSectorTotal?.[item] || 0;
-
-    transaction.set(ref, {
-      personal: {
-        ...currentPersonal,
-        [currentUser]: {
-          ...(currentPersonal[currentUser] || {}),
-          [item]: userItemValue + 1
-        }
-      },
-      sectorTotal: {
-        ...currentSectorTotal,
-        [item]: sectorItemValue + 1
-      }
-    }, { merge:true });
-  });
-};
-
-window.cancelSale = async function(item){
-  if(currentUser === "Mariama") return;
-  if(!cancelTimers[item] || Date.now() > cancelTimers[item]) return;
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
-
-    const data = snap.data();
-    const currentPersonal = data.personal || {};
-    const currentSectorTotal = data.sectorTotal || {};
-
-    const userItemValue = currentPersonal?.[currentUser]?.[item] || 0;
-    const sectorItemValue = currentSectorTotal?.[item] || 0;
-
-    transaction.set(ref, {
-      personal: {
-        ...currentPersonal,
-        [currentUser]: {
-          ...(currentPersonal[currentUser] || {}),
-          [item]: Math.max(userItemValue - 1, 0)
-        }
-      },
-      sectorTotal: {
-        ...currentSectorTotal,
-        [item]: Math.max(sectorItemValue - 1, 0)
-      }
-    }, { merge:true });
-  });
-
-  cancelTimers[item] = null;
-};
-
-function renderAdmin(){
-  const div = document.getElementById("adminInputs");
-  div.innerHTML = "";
-
-  itemsList.forEach(item => {
-    div.innerHTML += `
-      <div>
-        ${item} :
-        <input type="number" id="obj-${item}" value="${globalData[item] || 0}">
-      </div>
-    `;
-  });
+if(percentText>=120){
+div.style.background="#1e7e34";
+div.classList.add("glow");
+}
+else if(percentText>=100){
+div.style.background="#66cc88";
+}
+else{
+div.style.background="#ff7a00";
 }
 
-window.saveObjectives = async function(){
-  if(!confirm("Valider les nouveaux objectifs ?")) return;
+let objectifText=diff>=0
+?`Objectif restant : <strong>${diff}</strong>`
+:`Objectif dépassé de : <strong>${-diff}</strong>`;
 
-  let update = {};
-  let initial = { ...(globalData.initial || {}) };
+div.innerHTML=`
+<h3>${item}</h3>
+<p>${objectifText}</p>
 
-  itemsList.forEach(item => {
-    const val = parseInt(document.getElementById("obj-" + item).value) || 0;
-    update[item] = val;
-    initial[item] = val;
-  });
+<div class="progress-container">
+<div class="progress-bar" style="width:${percentBar}%"></div>
+<div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
+</div>
 
-  await setDoc(ref, {
-    ...update,
-    initial: initial
-  }, { merge:true });
-};
+<div class="personal-line">
+${personalText} : <strong>${userValue}</strong>
+</div>
 
-window.resetWeekly = async function(){
-  if(!confirm("Réinitialiser tous les objectifs ?")) return;
+${detailHTML}
 
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
+${canSell?`
+<button class="validate" onclick="decrement('${item}')">Valider une vente</button>
+<button class="cancel" ${!cancelAllowed?"disabled":""} onclick="cancelSale('${item}')">Annuler</button>
+`:""}
+`;
 
-    const data = snap.data();
-    const currentInitial = data.initial || {};
-    const currentSectorTotal = data.sectorTotal || {};
+container.appendChild(div);
 
-    const topLevelReset = {};
-    const initialReset = { ...currentInitial };
-    const sectorTotalReset = { ...currentSectorTotal };
-
-    itemsList.forEach(item => {
-      topLevelReset[item] = 0;
-      initialReset[item] = 0;
-      sectorTotalReset[item] = 0;
-    });
-
-    transaction.set(ref, {
-      ...topLevelReset,
-      initial: initialReset,
-      sectorTotal: sectorTotalReset
-    }, { merge:true });
-  });
-};
+});
+}
 </script>
 </body>
 </html>
