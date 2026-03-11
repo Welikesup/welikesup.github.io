@@ -301,6 +301,17 @@ function buildEmptyPersonal(){
   return personal;
 }
 
+function buildEmptyWeeklyPersonal(){
+  const weeklyPersonal = {};
+  allUsers.forEach(userName => {
+    weeklyPersonal[userName] = {};
+    itemsList.forEach(item => {
+      weeklyPersonal[userName][item] = 0;
+    });
+  });
+  return weeklyPersonal;
+}
+
 function buildEmptyItemMap(){
   const map = {};
   itemsList.forEach(item => {
@@ -321,6 +332,18 @@ function computeSectorTotalFromPersonal(personal){
   return sectorTotal;
 }
 
+function computeWeeklySectorTotalFromWeeklyPersonal(weeklyPersonal){
+  const weeklySectorTotal = {};
+  itemsList.forEach(item => {
+    let total = 0;
+    storeUsers.forEach(name => {
+      total += weeklyPersonal?.[name]?.[item] || 0;
+    });
+    weeklySectorTotal[item] = total;
+  });
+  return weeklySectorTotal;
+}
+
 async function ensureDataStructure(){
   await runTransaction(db, async (transaction) => {
     const snap = await transaction.get(ref);
@@ -328,8 +351,10 @@ async function ensureDataStructure(){
     if(!snap.exists()){
       const data = {
         personal: buildEmptyPersonal(),
+        weeklyPersonal: buildEmptyWeeklyPersonal(),
         initial: buildEmptyItemMap(),
         sectorTotal: buildEmptyItemMap(),
+        weeklySectorTotal: buildEmptyItemMap(),
         lastPersonalReset: getToday()
       };
 
@@ -373,6 +398,34 @@ async function ensureDataStructure(){
       needsPatch = true;
     }
 
+    const safeWeeklyPersonal = data.weeklyPersonal || {};
+    let patchedWeeklyPersonal = null;
+    let weeklyPersonalChanged = false;
+
+    allUsers.forEach(userName => {
+      if(!safeWeeklyPersonal[userName]){
+        if(!patchedWeeklyPersonal) patchedWeeklyPersonal = structuredClone(safeWeeklyPersonal);
+        patchedWeeklyPersonal[userName] = {};
+        itemsList.forEach(item => patchedWeeklyPersonal[userName][item] = 0);
+        weeklyPersonalChanged = true;
+        return;
+      }
+
+      itemsList.forEach(item => {
+        if(typeof safeWeeklyPersonal[userName][item] !== "number"){
+          if(!patchedWeeklyPersonal) patchedWeeklyPersonal = structuredClone(safeWeeklyPersonal);
+          if(!patchedWeeklyPersonal[userName]) patchedWeeklyPersonal[userName] = {};
+          patchedWeeklyPersonal[userName][item] = 0;
+          weeklyPersonalChanged = true;
+        }
+      });
+    });
+
+    if(weeklyPersonalChanged){
+      patch.weeklyPersonal = patchedWeeklyPersonal;
+      needsPatch = true;
+    }
+
     const safeInitial = data.initial || {};
     const patchedInitial = { ...safeInitial };
     let initialChanged = false;
@@ -404,6 +457,24 @@ async function ensureDataStructure(){
 
     if(sectorTotalChanged){
       patch.sectorTotal = patchedSectorTotal;
+      needsPatch = true;
+    }
+
+    const currentWeeklyPersonal = weeklyPersonalChanged ? patchedWeeklyPersonal : safeWeeklyPersonal;
+    const safeWeeklySectorTotal = data.weeklySectorTotal || {};
+    const patchedWeeklySectorTotal = { ...safeWeeklySectorTotal };
+    let weeklySectorTotalChanged = false;
+    const recomputedWeeklySectorTotal = computeWeeklySectorTotalFromWeeklyPersonal(currentWeeklyPersonal);
+
+    itemsList.forEach(item => {
+      if(typeof safeWeeklySectorTotal[item] !== "number"){
+        patchedWeeklySectorTotal[item] = recomputedWeeklySectorTotal[item] || 0;
+        weeklySectorTotalChanged = true;
+      }
+    });
+
+    if(weeklySectorTotalChanged){
+      patch.weeklySectorTotal = patchedWeeklySectorTotal;
       needsPatch = true;
     }
 
@@ -549,6 +620,7 @@ function display(){
   itemsList.forEach(item => {
     const initial = globalData.initial?.[item] ?? 0;
     const cumulativeValue = globalData.sectorTotal?.[item] || 0;
+    const weeklySectorValue = globalData.weeklySectorTotal?.[item] || 0;
 
     let todaySectorValue = 0;
     storeUsers.forEach(name => {
@@ -566,6 +638,14 @@ function display(){
     const userValue = (currentUser === "Mariama")
       ? todaySectorValue
       : (globalData.personal?.[currentUser]?.[item] || 0);
+
+    const weeklyUserValue = (currentUser === "Mariama")
+      ? weeklySectorValue
+      : (globalData.weeklyPersonal?.[currentUser]?.[item] || 0);
+
+    const weeklyText = (currentUser === "Mariama")
+      ? "Ventes du secteur cette semaine"
+      : "Ventes de la boutique cette semaine";
 
     const personalText = (currentUser === "Mariama")
       ? "Ventes du secteur aujourd'hui"
@@ -650,6 +730,10 @@ function display(){
       </div>
 
       <div class="personal-line">
+        ${weeklyText} : <strong>${weeklyUserValue}</strong>
+      </div>
+
+      <div class="personal-line">
         ${personalText} : <strong>${userValue}</strong>
       </div>
 
@@ -680,10 +764,14 @@ window.decrement = async function(item){
 
     const data = snap.data();
     const currentPersonal = data.personal || {};
+    const currentWeeklyPersonal = data.weeklyPersonal || {};
     const currentSectorTotal = data.sectorTotal || {};
+    const currentWeeklySectorTotal = data.weeklySectorTotal || {};
 
     const userItemValue = currentPersonal?.[currentUser]?.[item] || 0;
+    const weeklyUserItemValue = currentWeeklyPersonal?.[currentUser]?.[item] || 0;
     const sectorItemValue = currentSectorTotal?.[item] || 0;
+    const weeklySectorItemValue = currentWeeklySectorTotal?.[item] || 0;
 
     transaction.set(ref, {
       personal: {
@@ -693,9 +781,20 @@ window.decrement = async function(item){
           [item]: userItemValue + 1
         }
       },
+      weeklyPersonal: {
+        ...currentWeeklyPersonal,
+        [currentUser]: {
+          ...(currentWeeklyPersonal[currentUser] || {}),
+          [item]: weeklyUserItemValue + 1
+        }
+      },
       sectorTotal: {
         ...currentSectorTotal,
         [item]: sectorItemValue + 1
+      },
+      weeklySectorTotal: {
+        ...currentWeeklySectorTotal,
+        [item]: weeklySectorItemValue + 1
       }
     }, { merge:true });
   });
@@ -711,10 +810,14 @@ window.cancelSale = async function(item){
 
     const data = snap.data();
     const currentPersonal = data.personal || {};
+    const currentWeeklyPersonal = data.weeklyPersonal || {};
     const currentSectorTotal = data.sectorTotal || {};
+    const currentWeeklySectorTotal = data.weeklySectorTotal || {};
 
     const userItemValue = currentPersonal?.[currentUser]?.[item] || 0;
+    const weeklyUserItemValue = currentWeeklyPersonal?.[currentUser]?.[item] || 0;
     const sectorItemValue = currentSectorTotal?.[item] || 0;
+    const weeklySectorItemValue = currentWeeklySectorTotal?.[item] || 0;
 
     transaction.set(ref, {
       personal: {
@@ -724,9 +827,20 @@ window.cancelSale = async function(item){
           [item]: Math.max(userItemValue - 1, 0)
         }
       },
+      weeklyPersonal: {
+        ...currentWeeklyPersonal,
+        [currentUser]: {
+          ...(currentWeeklyPersonal[currentUser] || {}),
+          [item]: Math.max(weeklyUserItemValue - 1, 0)
+        }
+      },
       sectorTotal: {
         ...currentSectorTotal,
         [item]: Math.max(sectorItemValue - 1, 0)
+      },
+      weeklySectorTotal: {
+        ...currentWeeklySectorTotal,
+        [item]: Math.max(weeklySectorItemValue - 1, 0)
       }
     }, { merge:true });
   });
@@ -776,21 +890,26 @@ window.resetWeekly = async function(){
     const data = snap.data();
     const currentInitial = data.initial || {};
     const currentSectorTotal = data.sectorTotal || {};
+    const currentWeeklySectorTotal = data.weeklySectorTotal || {};
 
     const topLevelReset = {};
     const initialReset = { ...currentInitial };
     const sectorTotalReset = { ...currentSectorTotal };
+    const weeklySectorTotalReset = { ...currentWeeklySectorTotal };
 
     itemsList.forEach(item => {
       topLevelReset[item] = 0;
       initialReset[item] = 0;
       sectorTotalReset[item] = 0;
+      weeklySectorTotalReset[item] = 0;
     });
 
     transaction.set(ref, {
       ...topLevelReset,
       initial: initialReset,
-      sectorTotal: sectorTotalReset
+      sectorTotal: sectorTotalReset,
+      weeklySectorTotal: weeklySectorTotalReset,
+      weeklyPersonal: buildEmptyWeeklyPersonal()
     }, { merge:true });
   });
 };
