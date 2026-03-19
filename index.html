@@ -702,7 +702,6 @@ function isStoreAccount(){
   return currentRole === "store";
 }
 
-/* Managers affichent les mêmes infos que Mariama sur les tuiles */
 function hasMariamaTileView(){
   return isMariama() || isManager();
 }
@@ -835,6 +834,9 @@ function display(){
       todaySectorValue += globalData.personal?.[name]?.[item] || 0;
     });
 
+    const storeTodayValue = currentStore ? (globalData.personal?.[currentStore]?.[item] || 0) : 0;
+    const storeWeekValue = currentStore ? (globalData.weeklyPersonal?.[currentStore]?.[item] || 0) : 0;
+
     const diff = initial - cumulativeValue;
     const percentBar = Math.min(initial > 0 ? (cumulativeValue / initial) * 100 : 0, 100);
     const percentText = initial > 0 ? (cumulativeValue / initial) * 100 : 0;
@@ -941,17 +943,44 @@ function display(){
       </div>
     ` : ``;
 
+    let extraManagerLines = "";
+    if(isManager()){
+      extraManagerLines = `
+        <div class="personal-line">
+          Boutique semaine : <strong>${storeWeekValue}</strong>
+        </div>
+
+        <div class="personal-line">
+          Boutique aujourd’hui : <strong>${storeTodayValue}</strong>
+        </div>
+
+        <div class="personal-line">
+          Secteur semaine : <strong>${weeklySectorValue}</strong>
+        </div>
+
+        <div class="personal-line">
+          Secteur aujourd’hui : <strong>${todaySectorValue}</strong>
+        </div>
+      `;
+    }
+
     div.innerHTML = `
       <h3>${item}</h3>
       ${objectiveBlock}
 
-      <div class="personal-line">
-        ${weeklyText} : <strong>${weeklyUserValue}</strong>
-      </div>
+      ${
+        isManager()
+          ? extraManagerLines
+          : `
+            <div class="personal-line">
+              ${weeklyText} : <strong>${weeklyUserValue}</strong>
+            </div>
 
-      <div class="personal-line">
-        ${personalText} : <strong>${userValue}</strong>
-      </div>
+            <div class="personal-line">
+              ${personalText} : <strong>${userValue}</strong>
+            </div>
+          `
+      }
 
       ${detailHTML}
       ${leaderHTML}
@@ -992,16 +1021,16 @@ function renderStoreTracking(){
     const percentBar = Math.min(percentText, 100);
 
     let bgColor = "#ff7a00";
-    let percentColor = "#ff7a00";
+    let textColor = "#ff7a00";
     let extraClass = "";
 
     if(percentText >= 120){
       bgColor = "#1e7e34";
-      percentColor = "#1e7e34";
+      textColor = "#1e7e34";
       extraClass = "glow";
     } else if(percentText >= 100){
       bgColor = "#66cc88";
-      percentColor = "#66cc88";
+      textColor = "#66cc88";
     }
 
     const metaText = initial > 0
@@ -1019,7 +1048,7 @@ function renderStoreTracking(){
 
         <div class="store-progress-container">
           <div class="store-progress-bar" style="width:${percentBar}%;"></div>
-          <div class="store-progress-text" style="color:${percentColor};">${initial > 0 ? percentText.toFixed(0) + "%" : "0%"}</div>
+          <div class="store-progress-text" style="color:${textColor};">${initial > 0 ? percentText.toFixed(0) + "%" : "0%"}</div>
         </div>
       </div>
     `;
