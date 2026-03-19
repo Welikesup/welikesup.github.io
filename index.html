@@ -270,7 +270,8 @@ const passwords = {
 
 const allUsers = Object.values(passwords);
 const storeUsers = allUsers.filter(name => name !== "Mariama");
-const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
+const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Pack 5J/5G"];
+const itemsWithoutObjective = ["Pack 5J/5G"];
 
 let currentUser = "";
 let globalData = {};
@@ -618,6 +619,8 @@ function display(){
   const nextLeaderKeys = {};
 
   itemsList.forEach(item => {
+    const hasObjective = !itemsWithoutObjective.includes(item);
+
     const initial = globalData.initial?.[item] ?? 0;
     const cumulativeValue = globalData.sectorTotal?.[item] || 0;
     const weeklySectorValue = globalData.weeklySectorTotal?.[item] || 0;
@@ -698,11 +701,15 @@ function display(){
     const div = document.createElement("div");
     div.className = "item";
 
-    if(percentText >= 120){
-      div.style.background = "#1e7e34";
-      div.classList.add("glow");
-    } else if(percentText >= 100){
-      div.style.background = "#66cc88";
+    if(hasObjective){
+      if(percentText >= 120){
+        div.style.background = "#1e7e34";
+        div.classList.add("glow");
+      } else if(percentText >= 100){
+        div.style.background = "#66cc88";
+      } else {
+        div.style.background = "#ff7a00";
+      }
     } else {
       div.style.background = "#ff7a00";
     }
@@ -720,14 +727,18 @@ function display(){
       ? `Objectif restant : <strong>${diff}</strong>`
       : `Objectif dépassé de : <strong>${-diff}</strong>`;
 
-    div.innerHTML = `
-      <h3>${item}</h3>
+    const objectiveBlock = hasObjective ? `
       <p>${objectifText}</p>
 
       <div class="progress-container">
         <div class="progress-bar" style="width:${percentBar}%"></div>
         <div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
       </div>
+    ` : ``;
+
+    div.innerHTML = `
+      <h3>${item}</h3>
+      ${objectiveBlock}
 
       <div class="personal-line">
         ${weeklyText} : <strong>${weeklyUserValue}</strong>
@@ -853,6 +864,8 @@ function renderAdmin(){
   div.innerHTML = "";
 
   itemsList.forEach(item => {
+    if(itemsWithoutObjective.includes(item)) return;
+
     div.innerHTML += `
       <div>
         ${item} :
@@ -869,6 +882,8 @@ window.saveObjectives = async function(){
   let initial = { ...(globalData.initial || {}) };
 
   itemsList.forEach(item => {
+    if(itemsWithoutObjective.includes(item)) return;
+
     const val = parseInt(document.getElementById("obj-" + item).value) || 0;
     update[item] = val;
     initial[item] = val;
@@ -898,8 +913,10 @@ window.resetWeekly = async function(){
     const weeklySectorTotalReset = { ...currentWeeklySectorTotal };
 
     itemsList.forEach(item => {
-      topLevelReset[item] = 0;
-      initialReset[item] = 0;
+      if(!itemsWithoutObjective.includes(item)){
+        topLevelReset[item] = 0;
+        initialReset[item] = 0;
+      }
       sectorTotalReset[item] = 0;
       weeklySectorTotalReset[item] = 0;
     });
