@@ -875,6 +875,7 @@ function display(){
     let detailHTML = "";
     if(hasMariamaTileView()){
       storeUsers.forEach(name => {
+        if(currentStore && name === currentStore) return;
         const val = globalData.personal?.[name]?.[item] || 0;
         detailHTML += `<div style="font-size:12px; margin-top:2px; line-height:1.15;">${name} : ${val}</div>`;
       });
