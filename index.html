@@ -78,7 +78,7 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 
 .item{
   background:#ff7a00;
-  padding:18px;
+  padding:14px 18px 16px 18px;
   margin:15px;
   border-radius:18px;
   width:260px;
@@ -103,6 +103,15 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 
 .item.leader-flash{
   animation:leaderFlash 1s ease;
+}
+
+.item h3{
+  margin:4px 0 8px 0;
+  font-size:18px;
+}
+
+.item p{
+  margin:0 0 8px 0;
 }
 
 .progress-container{
@@ -867,7 +876,7 @@ function display(){
     if(hasMariamaTileView()){
       storeUsers.forEach(name => {
         const val = globalData.personal?.[name]?.[item] || 0;
-        detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
+        detailHTML += `<div style="font-size:12px; margin-top:2px; line-height:1.15;">${name} : ${val}</div>`;
       });
     }
 
@@ -893,7 +902,7 @@ function display(){
       const leaderNames = leaders.join(" / ");
       leaderHTML = `<div style="
         font-size:13px;
-        margin-top:10px;
+        margin-top:6px;
         font-weight:700;
         color:#FFD700;
         text-shadow:
