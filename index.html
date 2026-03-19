@@ -78,7 +78,7 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 
 .item{
   background:#ff7a00;
-  padding:20px;
+  padding:18px;
   margin:15px;
   border-radius:18px;
   width:260px;
@@ -136,14 +136,16 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 }
 
 .personal-line{
-  font-size:15px;
-  margin-top:10px;
+  font-size:14px;
+  margin-top:4px;
+  margin-bottom:0;
   font-weight:700;
   white-space:nowrap;
+  line-height:1.2;
 }
 
 .personal-line strong{
-  font-size:17px;
+  font-size:16px;
 }
 
 .admin-panel,
@@ -946,11 +948,11 @@ function display(){
     let extraManagerLines = "";
     if(isManager()){
       extraManagerLines = `
-        <div class="personal-line">
+        <div class="personal-line" style="color:#000;">
           Boutique semaine : <strong>${storeWeekValue}</strong>
         </div>
 
-        <div class="personal-line">
+        <div class="personal-line" style="color:#000;">
           Boutique aujourd’hui : <strong>${storeTodayValue}</strong>
         </div>
 
