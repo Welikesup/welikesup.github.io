@@ -198,17 +198,29 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
   font-weight:700;
 }
 
-/* Suivi boutique compact */
+/* Suivi boutique compact en 2 colonnes */
 .store-progress-list{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px 12px;
 }
 
 .store-progress-row{
-  background:rgba(255,255,255,0.05);
-  border-radius:10px;
-  padding:8px 10px;
+  border-radius:12px;
+  padding:10px 12px;
+  box-shadow:0 8px 18px rgba(0,0,0,0.25);
+  transition:0.2s;
+}
+
+.store-progress-row:hover{
+  transform:translateY(-2px);
+}
+
+.store-progress-row.glow{
+  box-shadow:
+    0 0 10px rgba(30,126,52,0.7),
+    0 0 20px rgba(30,126,52,0.6),
+    0 8px 18px rgba(0,0,0,0.25);
 }
 
 .store-progress-head{
@@ -216,7 +228,7 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
   align-items:center;
   justify-content:space-between;
   gap:10px;
-  margin-bottom:5px;
+  margin-bottom:6px;
 }
 
 .store-progress-title{
@@ -226,15 +238,15 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 
 .store-progress-meta{
   font-size:11px;
-  opacity:0.9;
   text-align:right;
   white-space:nowrap;
+  font-weight:600;
 }
 
 .store-progress-container{
-  background:rgba(255,255,255,0.18);
+  background:rgba(255,255,255,0.3);
   border-radius:999px;
-  height:12px;
+  height:14px;
   overflow:hidden;
   position:relative;
 }
@@ -244,6 +256,7 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
   width:0%;
   transition:width 0.5s ease;
   border-radius:999px;
+  background:white;
 }
 
 .store-progress-text{
@@ -251,9 +264,8 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
-  font-size:9px;
+  font-size:10px;
   font-weight:700;
-  color:#111;
   pointer-events:none;
 }
 
@@ -262,6 +274,9 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
   button{font-size:18px;padding:14px;}
   .container{margin-top:40px;}
   .ranking-row{font-size:15px;}
+  .store-progress-list{
+    grid-template-columns:1fr;
+  }
   .store-progress-head{
     flex-direction:column;
     align-items:flex-start;
@@ -976,9 +991,18 @@ function renderStoreTracking(){
     const percentText = initial > 0 ? (progress / initial) * 100 : 0;
     const percentBar = Math.min(percentText, 100);
 
-    let barColor = "#ff7a00";
-    if(percentText >= 100 && percentText < 120) barColor = "#66cc88";
-    if(percentText >= 120) barColor = "#1e7e34";
+    let bgColor = "#ff7a00";
+    let percentColor = "#ff7a00";
+    let extraClass = "";
+
+    if(percentText >= 120){
+      bgColor = "#1e7e34";
+      percentColor = "#1e7e34";
+      extraClass = "glow";
+    } else if(percentText >= 100){
+      bgColor = "#66cc88";
+      percentColor = "#66cc88";
+    }
 
     const metaText = initial > 0
       ? (diff >= 0
@@ -987,15 +1011,15 @@ function renderStoreTracking(){
       : `Aucun objectif • ${progress}`;
 
     return `
-      <div class="store-progress-row">
+      <div class="store-progress-row ${extraClass}" style="background:${bgColor};">
         <div class="store-progress-head">
           <div class="store-progress-title">${item}</div>
           <div class="store-progress-meta">${metaText}</div>
         </div>
 
         <div class="store-progress-container">
-          <div class="store-progress-bar" style="width:${percentBar}%; background:${barColor};"></div>
-          <div class="store-progress-text">${initial > 0 ? percentText.toFixed(0) + "%" : "0%"}</div>
+          <div class="store-progress-bar" style="width:${percentBar}%;"></div>
+          <div class="store-progress-text" style="color:${percentColor};">${initial > 0 ? percentText.toFixed(0) + "%" : "0%"}</div>
         </div>
       </div>
     `;
