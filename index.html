@@ -948,6 +948,19 @@ function display(){
 
     const objectiveBlock = hasObjective ? `
       <p>${objectifText}</p>
+      ${
+        isManager()
+          ? `
+            <div class="personal-line">
+              Secteur semaine : <strong>${weeklySectorValue}</strong>
+            </div>
+
+            <div class="personal-line">
+              Secteur aujourd’hui : <strong>${todaySectorValue}</strong>
+            </div>
+          `
+          : ``
+      }
 
       <div class="progress-container">
         <div class="progress-bar" style="width:${percentBar}%"></div>
@@ -958,20 +971,12 @@ function display(){
     let extraManagerLines = "";
     if(isManager()){
       extraManagerLines = `
-        <div class="personal-line" style="color:#000;">
+        <div class="personal-line">
           Boutique semaine : <strong>${storeWeekValue}</strong>
         </div>
 
-        <div class="personal-line" style="color:#000;">
+        <div class="personal-line">
           Boutique aujourd’hui : <strong>${storeTodayValue}</strong>
-        </div>
-
-        <div class="personal-line">
-          Secteur semaine : <strong>${weeklySectorValue}</strong>
-        </div>
-
-        <div class="personal-line">
-          Secteur aujourd’hui : <strong>${todaySectorValue}</strong>
         </div>
       `;
     }
