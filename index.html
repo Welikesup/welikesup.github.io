@@ -60,6 +60,23 @@ button{
 button.validate{background:white;color:black;}
 button.cancel{background:#222;color:white;margin-left:8px;}
 button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
+button.catchup{background:#444;color:#ffd700;margin-left:8px;}
+
+.btn-row{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:0px;
+  margin-top:10px;
+}
+
+.btn-row button{
+  margin-top:0;
+  flex:1 1 0;
+  min-width:0;
+  font-size:12px;
+  padding:8px 6px;
+}
 
 .hidden{display:none;}
 
@@ -78,7 +95,7 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 
 .item{
   background:#ff7a00;
-  padding:20px;
+  padding:14px 18px 16px 18px;
   margin:15px;
   border-radius:18px;
   width:260px;
@@ -103,6 +120,15 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 
 .item.leader-flash{
   animation:leaderFlash 1s ease;
+}
+
+.item h3{
+  margin:4px 0 8px 0;
+  font-size:18px;
+}
+
+.item p{
+  margin:0 0 8px 0;
 }
 
 .progress-container{
@@ -136,14 +162,16 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 }
 
 .personal-line{
-  font-size:15px;
-  margin-top:10px;
+  font-size:14px;
+  margin-top:4px;
+  margin-bottom:0;
   font-weight:700;
   white-space:nowrap;
+  line-height:1.2;
 }
 
 .personal-line strong{
-  font-size:17px;
+  font-size:16px;
 }
 
 .admin-panel,
@@ -272,6 +300,7 @@ button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 @media(max-width:768px){
   .item{width:90%;}
   button{font-size:18px;padding:14px;}
+  .btn-row button{font-size:12px;padding:8px 6px;}
   .container{margin-top:40px;}
   .ranking-row{font-size:15px;}
   .store-progress-list{
@@ -381,8 +410,8 @@ const accounts = {
 const storeUsers = ["Le Havre","Evreux","Mondeville","Caen","La Glacerie","Rouen"];
 const allUsers = [...storeUsers, "Mariama"];
 
-const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Pack 5J/5G"];
-const itemsWithoutObjective = ["Pack 5J/5G"];
+const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
+const itemsWithoutObjective = [];
 
 /* Nouveau suivi boutique indépendant : uniquement 8 KPI */
 const managerItemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
@@ -864,8 +893,9 @@ function display(){
     let detailHTML = "";
     if(hasMariamaTileView()){
       storeUsers.forEach(name => {
+        if(currentStore && name === currentStore) return;
         const val = globalData.personal?.[name]?.[item] || 0;
-        detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
+        detailHTML += `<div style="font-size:12px; margin-top:2px; line-height:1.15;">${name} : ${val}</div>`;
       });
     }
 
@@ -891,7 +921,7 @@ function display(){
       const leaderNames = leaders.join(" / ");
       leaderHTML = `<div style="
         font-size:13px;
-        margin-top:10px;
+        margin-top:6px;
         font-weight:700;
         color:#FFD700;
         text-shadow:
@@ -936,6 +966,19 @@ function display(){
 
     const objectiveBlock = hasObjective ? `
       <p>${objectifText}</p>
+      ${
+        isManager()
+          ? `
+            <div class="personal-line">
+              Secteur semaine : <strong>${weeklySectorValue}</strong>
+            </div>
+
+            <div class="personal-line">
+              Secteur aujourd'hui : <strong>${todaySectorValue}</strong>
+            </div>
+          `
+          : ``
+      }
 
       <div class="progress-container">
         <div class="progress-bar" style="width:${percentBar}%"></div>
@@ -951,17 +994,28 @@ function display(){
         </div>
 
         <div class="personal-line">
-          Boutique aujourd’hui : <strong>${storeTodayValue}</strong>
-        </div>
-
-        <div class="personal-line">
-          Secteur semaine : <strong>${weeklySectorValue}</strong>
-        </div>
-
-        <div class="personal-line">
-          Secteur aujourd’hui : <strong>${todaySectorValue}</strong>
+          Boutique aujourd'hui : <strong>${storeTodayValue}</strong>
         </div>
       `;
+    }
+
+    /* Boutons */
+    let buttonsHTML = "";
+    if(canSell){
+      if(isManager()){
+        buttonsHTML = `
+          <div class="btn-row">
+            <button class="validate" onclick="decrement('${item}')">Valider</button>
+            <button class="cancel" ${!cancelAllowed ? "disabled" : ""} onclick="cancelSale('${item}')">Annuler</button>
+            <button class="catchup" onclick="catchUpSale('${item}')">Rattraper</button>
+          </div>
+        `;
+      } else {
+        buttonsHTML = `
+          <button class="validate" onclick="decrement('${item}')">Valider une vente</button>
+          <button class="cancel" ${!cancelAllowed ? "disabled" : ""} onclick="cancelSale('${item}')">Annuler</button>
+        `;
+      }
     }
 
     div.innerHTML = `
@@ -984,11 +1038,7 @@ function display(){
 
       ${detailHTML}
       ${leaderHTML}
-
-      ${canSell ? `
-        <button class="validate" onclick="decrement('${item}')">Valider une vente</button>
-        <button class="cancel" ${!cancelAllowed ? "disabled" : ""} onclick="cancelSale('${item}')">Annuler</button>
-      ` : ""}
+      ${buttonsHTML}
     `;
 
     container.appendChild(div);
@@ -1185,6 +1235,57 @@ window.cancelSale = async function(item){
   });
 
   cancelTimers[item] = null;
+};
+
+/* Rattraper une vente semaine : alimente weeklyPersonal, weeklySectorTotal
+   et boutiqueProgress SANS toucher personal ni sectorTotal (pas de vente du jour) */
+window.catchUpSale = async function(item){
+  if(!isManager()) return;
+  if(!confirm("Rattraper une vente semaine pour " + item + " ?")) return;
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+
+    const data = snap.data();
+    const currentWeeklyPersonal = data.weeklyPersonal || {};
+    const currentWeeklySectorTotal = data.weeklySectorTotal || {};
+    const currentBoutiqueProgress = data.boutiqueProgress || {};
+
+    const targetStore = currentStore;
+
+    const weeklyUserItemValue = currentWeeklyPersonal?.[targetStore]?.[item] || 0;
+    const weeklySectorItemValue = currentWeeklySectorTotal?.[item] || 0;
+
+    const payload = {
+      weeklyPersonal: {
+        ...currentWeeklyPersonal,
+        [targetStore]: {
+          ...(currentWeeklyPersonal[targetStore] || {}),
+          [item]: weeklyUserItemValue + 1
+        }
+      },
+      weeklySectorTotal: {
+        ...currentWeeklySectorTotal,
+        [item]: weeklySectorItemValue + 1
+      }
+    };
+
+    if(managerItemsList.includes(item)){
+      const storeProgressMap = currentBoutiqueProgress?.[targetStore] || {};
+      const currentStoreProgressValue = storeProgressMap?.[item] || 0;
+
+      payload.boutiqueProgress = {
+        ...currentBoutiqueProgress,
+        [targetStore]: {
+          ...storeProgressMap,
+          [item]: currentStoreProgressValue + 1
+        }
+      };
+    }
+
+    transaction.set(ref, payload, { merge:true });
+  });
 };
 
 function renderAdmin(){
