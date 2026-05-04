@@ -48,17 +48,26 @@ text-align:center;
 }
 
 button{
-padding:10px 15px;
+padding:8px 10px;
 margin-top:10px;
 border:none;
 border-radius:8px;
 font-weight:600;
 cursor:pointer;
-max-width:100%;
+font-size:12px;
+}
+
+.buttons{
+display:flex;
+justify-content:center;
+gap:5px;
+margin-top:10px;
 }
 
 button.validate{background:white;color:black;}
-button.cancel{background:#222;color:white;margin-left:8px;}
+button.cancel{background:#222;color:white;}
+button.catch{background:#444;color:#fff;}
+
 button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 
 .hidden{display:none;}
@@ -117,12 +126,6 @@ padding:20px;
 margin:30px;
 border-radius:15px;
 }
-
-@media(max-width:768px){
-.item{width:90%;}
-button{font-size:18px;padding:14px;}
-.container{margin-top:40px;}
-}
 </style>
 </head>
 
@@ -142,18 +145,14 @@ button{font-size:18px;padding:14px;}
 </div>
 
 <div id="app" class="hidden">
-
 <h2 id="welcome"></h2>
-
 <div id="adminPanel" class="admin-panel hidden">
 <h3>Administration</h3>
 <div id="adminInputs"></div>
 <button onclick="saveObjectives()">Valider tous les objectifs</button>
 <button onclick="resetWeekly()">Réinitialiser les objectifs</button>
 </div>
-
 <div id="items"></div>
-
 </div>
 
 <script type="module">
@@ -161,14 +160,7 @@ button{font-size:18px;padding:14px;}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot, runTransaction, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const firebaseConfig={
-apiKey:"AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
-authDomain:"compteur-stn.firebaseapp.com",
-projectId:"compteur-stn",
-storageBucket:"compteur-stn.firebasestorage.app",
-messagingSenderId:"661197584248",
-appId:"1:661197584248:web:1dc33900c4422df4c53a8d"
-};
+const firebaseConfig={...}; // garde ton config
 
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
@@ -184,59 +176,45 @@ const passwords={
 "secteurstn":"Mariama"
 };
 
-const itemsList=[
-"Broadband","Socle Mobiles","MEV","Terminaux",
-"Assurances","Cyber","MP","Pros"
-];
+const itemsList=["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
 
 let currentUser="";
 let globalData={};
 let initialObjectives={};
 let cancelTimers={};
+let isManager=false;
 
 function getToday(){
 return new Date().toLocaleDateString("fr-CA",{timeZone:"Europe/Paris"});
 }
 
 async function checkDailyReset(){
-
 await runTransaction(db,async(transaction)=>{
-
 const snap=await transaction.get(ref);
 if(!snap.exists()) return;
-
 const data=snap.data();
 const today=getToday();
-
 if(data.lastPersonalReset===today) return;
 
 let resetPersonal={};
-
 Object.values(passwords).forEach(u=>{
 resetPersonal[u]={};
 itemsList.forEach(i=>resetPersonal[u][i]=0);
 });
 
-transaction.update(ref,{
-personal:resetPersonal,
-lastPersonalReset:today
+transaction.update(ref,{personal:resetPersonal,lastPersonalReset:today});
 });
-
-});
-
 }
 
 window.login=async function(){
-
-const pass=document.getElementById("password").value;
+let pass=document.getElementById("password").value.trim().toLowerCase();
+isManager=pass.endsWith("*");
+if(isManager) pass=pass.slice(0,-1);
 
 if(passwords[pass]){
-
 currentUser=passwords[pass];
-
 document.getElementById("login").classList.add("hidden");
 document.getElementById("app").classList.remove("hidden");
-
 document.getElementById("welcome").innerText="Bienvenue "+currentUser;
 
 if(currentUser==="Mariama"){
@@ -244,55 +222,38 @@ document.getElementById("adminPanel").classList.remove("hidden");
 }
 
 await initData();
-
 }else{
 document.getElementById("error").innerText="Mot de passe incorrect";
 }
-
 }
 
 async function initData(){
-
 const snap=await getDoc(ref);
 
 if(!snap.exists()){
-
 let data={personal:{},lastPersonalReset:getToday()};
-
 itemsList.forEach(i=>data[i]=0);
-
 Object.values(passwords).forEach(u=>{
 data.personal[u]={};
 itemsList.forEach(i=>data.personal[u][i]=0);
 });
-
 await setDoc(ref,data);
-
 }
 
 await checkDailyReset();
-setInterval(checkDailyReset,60000);
 
 onSnapshot(ref,(docSnap)=>{
-
 globalData=docSnap.data();
-
 itemsList.forEach(i=>{
 if(initialObjectives[i]===undefined){
 initialObjectives[i]=globalData[i];
 }
 });
-
 display();
-
-if(currentUser==="Mariama") renderAdmin();
-
 });
-
 }
 
 function display(){
-
 const container=document.getElementById("items");
 container.innerHTML="";
 
@@ -300,36 +261,16 @@ itemsList.forEach(item=>{
 
 const remaining=globalData[item]||0;
 const initial=initialObjectives[item]||remaining;
-
 const percent=initial>0?((initial-remaining)/initial)*100:100;
 
-let personalValue=0;
-let detailHTML="";
-
-if(currentUser==="Mariama"){
-
-Object.entries(passwords).forEach(([key,name])=>{
-if(name!=="Mariama"){
-const val=globalData.personal?.[name]?.[item]||0;
-personalValue+=val;
-detailHTML+=`<div style="font-size:12px">${name} : ${val}</div>`;
-}
-});
-
-}else{
-personalValue=globalData.personal?.[currentUser]?.[item]||0;
-}
-
+let personalValue=globalData.personal?.[currentUser]?.[item]||0;
 const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
 
 const div=document.createElement("div");
 div.className="item";
 
-if(remaining<=0) div.classList.add("success");
-
 div.innerHTML=`
 <h3>${item}</h3>
-
 <p>Objectif restant: <strong>${remaining}</strong></p>
 
 <div class="progress-container">
@@ -340,83 +281,39 @@ div.innerHTML=`
 Mes ventes aujourd'hui : <strong>${personalValue}</strong>
 </div>
 
-${currentUser==="Mariama"?detailHTML:""}
-
-<button class="validate" onclick="decrement('${item}')">Valider une vente</button>
-
+<div class="buttons">
+<button class="validate" onclick="decrement('${item}')">Valider</button>
 <button class="cancel" ${!cancelAllowed?"disabled":""} onclick="cancelSale('${item}')">Annuler</button>
+${isManager ? `<button class="catch" onclick="catchUp('${item}')">Rattraper</button>` : ""}
+</div>
 `;
 
 container.appendChild(div);
-
 });
-
 }
 
 window.decrement=async function(item){
-
-if(!confirm("Confirmer cette vente ?")) return;
-
 cancelTimers[item]=Date.now()+20000;
-
 await updateDoc(ref,{
 [item]:increment(-1),
 [`personal.${currentUser}.${item}`]:increment(1)
 });
-
 }
 
 window.cancelSale=async function(item){
-
 if(!cancelTimers[item]||Date.now()>cancelTimers[item]) return;
-
-cancelTimers[item]=null; // bloque immédiatement les autres clics
-
+cancelTimers[item]=null;
 await updateDoc(ref,{
 [item]:increment(1),
 [`personal.${currentUser}.${item}`]:increment(-1)
 });
-
 }
 
-function renderAdmin(){
-
-const div=document.getElementById("adminInputs");
-div.innerHTML="";
-
-itemsList.forEach(item=>{
-div.innerHTML+=`
-<div>
-${item} :
-<input type="number" id="obj-${item}" value="${globalData[item]||0}">
-</div>
-`;
+window.catchUp=async function(item){
+if(!isManager) return;
+await updateDoc(ref,{
+[item]:increment(-1)
 });
-
-}
-
-window.saveObjectives=async function(){
-
-let update={};
-
-itemsList.forEach(item=>{
-update[item]=parseInt(document.getElementById("obj-"+item).value)||0;
-initialObjectives[item]=update[item];
-});
-
-await setDoc(ref,update,{merge:true});
-
-}
-
-window.resetWeekly=async function(){
-
-if(!confirm("Réinitialiser tous les objectifs ?")) return;
-
-let reset={};
-itemsList.forEach(item=>reset[item]=0);
-
-await setDoc(ref,reset,{merge:true});
-
 }
 
 </script>
