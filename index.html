@@ -350,6 +350,10 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
 
   <div id="items"></div>
 
+  <div id="txPanel" class="store-panel hidden">
+    <div id="txContent"></div>
+  </div>
+
   <div id="storeTrackingPanel" class="store-panel hidden">
     <h3 id="storeTrackingTitle">Suivi boutique</h3>
     <div id="storeTrackingContent" class="store-progress-list"></div>
@@ -410,17 +414,18 @@ const accounts = {
 const storeUsers = ["Le Havre","Evreux","Mondeville","Caen","La Glacerie","Rouen"];
 const allUsers = [...storeUsers, "Mariama"];
 
-const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
-const itemsWithoutObjective = [];
+const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Autre"];
+const itemsWithoutObjective = ["Autre"];
 
-/* Nouveau suivi boutique indépendant : uniquement 8 KPI */
-const managerItemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
+/* Suivi boutique indépendant : 8 KPI + Autre */
+const managerItemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Autre"];
 
 let currentUser = "";
 let currentRole = "";
 let currentStore = null;
 let globalData = {};
 let cancelTimers = {};
+let cancelTimerTimeouts = {};
 let unsubscribeSnapshot = null;
 let previousLeaderKeys = {};
 
@@ -477,6 +482,22 @@ function buildEmptyManagerStoreMap(){
   return map;
 }
 
+function buildEmptyDailyProgress(){
+  const map = {};
+  storeUsers.forEach(store => {
+    map[store] = 0;
+  });
+  return map;
+}
+
+function buildEmptyDailyObjective(){
+  const map = {};
+  storeUsers.forEach(store => {
+    map[store] = 0;
+  });
+  return map;
+}
+
 function computeSectorTotalFromPersonal(personal){
   const sectorTotal = {};
   itemsList.forEach(item => {
@@ -515,6 +536,8 @@ async function ensureDataStructure(){
         boutiqueObjectives: buildEmptyManagerStoreMap(),
         boutiqueInitial: buildEmptyManagerStoreMap(),
         boutiqueProgress: buildEmptyManagerStoreMap(),
+        dailyObjective: buildEmptyDailyObjective(),
+        dailyProgress: buildEmptyDailyProgress(),
         lastPersonalReset: getToday()
       };
 
@@ -684,6 +707,21 @@ async function ensureDataStructure(){
       needsPatch = true;
     }
 
+    /* dailyObjective : persiste, ne se remet pas à 0 */
+    const safeDailyObjective = data.dailyObjective || {};
+    const patchedDailyObjective = { ...safeDailyObjective };
+    let dailyObjectiveChanged = false;
+    storeUsers.forEach(store => {
+      if(typeof patchedDailyObjective[store] !== "number"){
+        patchedDailyObjective[store] = 0;
+        dailyObjectiveChanged = true;
+      }
+    });
+    if(dailyObjectiveChanged){
+      patch.dailyObjective = patchedDailyObjective;
+      needsPatch = true;
+    }
+
     if(typeof data.lastPersonalReset !== "string"){
       patch.lastPersonalReset = getToday();
       needsPatch = true;
@@ -767,6 +805,7 @@ window.login = async function(){
 
     if(isStoreAccount() || isManager()){
       document.getElementById("storeTrackingPanel").classList.remove("hidden");
+      document.getElementById("txPanel").classList.remove("hidden");
     }
 
     await initData();
@@ -795,6 +834,7 @@ async function initData(){
 
     if(isStoreAccount() || isManager()){
       renderStoreTracking();
+      renderTx();
     }
   });
 
@@ -1105,11 +1145,67 @@ function renderStoreTracking(){
   }).join("");
 }
 
+function renderTx(){
+  const panel = document.getElementById("txPanel");
+  const content = document.getElementById("txContent");
+  if(!panel || !content || !currentStore) return;
+
+  /* Total du jour : somme de tous les KPI (personal) pour la boutique */
+  let todayTotal = 0;
+  managerItemsList.forEach(item => {
+    todayTotal += globalData.personal?.[currentStore]?.[item] || 0;
+  });
+
+  const objective = globalData.dailyObjective?.[currentStore] || 0;
+  const diff = objective - todayTotal;
+  const percentText = objective > 0 ? (todayTotal / objective) * 100 : 0;
+  const percentBar = Math.min(percentText, 100);
+
+  let bgColor = "#ff7a00";
+  let textColor = "#ff7a00";
+  let glowClass = "";
+
+  if(percentText >= 120){
+    bgColor = "#1e7e34";
+    textColor = "#1e7e34";
+    glowClass = "glow";
+  } else if(percentText >= 100){
+    bgColor = "#66cc88";
+    textColor = "#66cc88";
+  }
+
+  const metaText = objective > 0
+    ? (diff >= 0
+      ? `Reste : ${diff} • ${todayTotal}/${objective}`
+      : `Dépassé de : ${-diff} • ${todayTotal}/${objective}`)
+    : `Aucun objectif • ${todayTotal} placement${todayTotal > 1 ? "s" : ""} aujourd'hui`;
+
+  content.innerHTML = `
+    <div class="store-progress-row ${glowClass}" style="background:${bgColor};">
+      <div class="store-progress-head">
+        <div class="store-progress-title" style="font-size:15px;">🎯 Taux de Transformation</div>
+        <div class="store-progress-meta">${metaText}</div>
+      </div>
+      <div class="store-progress-container">
+        <div class="store-progress-bar" style="width:${percentBar}%;"></div>
+        <div class="store-progress-text" style="color:${textColor};">${objective > 0 ? percentText.toFixed(0) + "%" : "—"}</div>
+      </div>
+    </div>
+  `;
+}
+
 window.decrement = async function(item){
   if(isMariama()) return;
   if(!confirm("Confirmer cette vente ?")) return;
 
   cancelTimers[item] = Date.now() + 20000;
+
+  /* Re-render après 20s pour griser visuellement le bouton Annuler */
+  if(cancelTimerTimeouts[item]) clearTimeout(cancelTimerTimeouts[item]);
+  cancelTimerTimeouts[item] = setTimeout(() => {
+    cancelTimers[item] = null;
+    display();
+  }, 20000);
 
   await runTransaction(db, async (transaction) => {
     const snap = await transaction.get(ref);
@@ -1235,6 +1331,7 @@ window.cancelSale = async function(item){
   });
 
   cancelTimers[item] = null;
+  if(cancelTimerTimeouts[item]){ clearTimeout(cancelTimerTimeouts[item]); cancelTimerTimeouts[item] = null; }
 };
 
 /* Rattraper une vente semaine : alimente weeklyPersonal, weeklySectorTotal
@@ -1313,6 +1410,14 @@ function renderAdmin(){
     title.textContent = `Administration boutique — ${currentStore}`;
 
     const boutiqueObjectives = globalData.boutiqueObjectives?.[currentStore] || {};
+    const currentDailyObjective = globalData.dailyObjective?.[currentStore] || 0;
+
+    div.innerHTML += `
+      <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #444;">
+        🎯 Objectif journalier (total placements) :
+        <input type="number" id="obj-daily" value="${currentDailyObjective}">
+      </div>
+    `;
 
     managerItemsList.forEach(item => {
       div.innerHTML += `
@@ -1352,10 +1457,13 @@ window.saveObjectives = async function(){
     const currentBoutiqueObjectives = globalData.boutiqueObjectives || {};
     const currentBoutiqueInitial = globalData.boutiqueInitial || {};
     const currentBoutiqueProgress = globalData.boutiqueProgress || {};
+    const currentDailyObjective = globalData.dailyObjective || {};
 
     const updatedStoreObjectives = { ...(currentBoutiqueObjectives[currentStore] || {}) };
     const updatedStoreInitial = { ...(currentBoutiqueInitial[currentStore] || {}) };
     const resetStoreProgress = { ...(currentBoutiqueProgress[currentStore] || {}) };
+
+    const dailyVal = parseInt(document.getElementById("obj-daily").value) || 0;
 
     managerItemsList.forEach(item => {
       const val = parseInt(document.getElementById("obj-" + item).value) || 0;
@@ -1376,6 +1484,10 @@ window.saveObjectives = async function(){
       boutiqueProgress: {
         ...currentBoutiqueProgress,
         [currentStore]: resetStoreProgress
+      },
+      dailyObjective: {
+        ...currentDailyObjective,
+        [currentStore]: dailyVal
       }
     }, { merge:true });
   }
