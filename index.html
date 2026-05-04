@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -417,8 +418,9 @@ const allUsers = [...storeUsers, "Mariama"];
 const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Autre"];
 const itemsWithoutObjective = ["Autre"];
 
-/* Suivi boutique indépendant : 8 KPI + Autre */
+/* Suivi boutique : Autre inclus dans TX mais exclu de l'affichage boutique */
 const managerItemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Autre"];
+const boutiqueDisplayList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
 
 let currentUser = "";
 let currentRole = "";
@@ -1101,7 +1103,7 @@ function renderStoreTracking(){
   const storeInitial = globalData.boutiqueInitial?.[currentStore] || {};
   const storeProgress = globalData.boutiqueProgress?.[currentStore] || {};
 
-  content.innerHTML = managerItemsList.map(item => {
+  content.innerHTML = boutiqueDisplayList.map(item => {
     const objective = storeObjectives[item] ?? 0;
     const initial = storeInitial[item] ?? objective ?? 0;
     const progress = storeProgress[item] ?? 0;
@@ -1150,7 +1152,6 @@ function renderTx(){
   const content = document.getElementById("txContent");
   if(!panel || !content || !currentStore) return;
 
-  /* Total du jour : somme de tous les KPI (personal) pour la boutique */
   let todayTotal = 0;
   managerItemsList.forEach(item => {
     todayTotal += globalData.personal?.[currentStore]?.[item] || 0;
@@ -1419,7 +1420,7 @@ function renderAdmin(){
       </div>
     `;
 
-    managerItemsList.forEach(item => {
+    boutiqueDisplayList.forEach(item => {
       div.innerHTML += `
         <div>
           ${item} :
@@ -1465,7 +1466,7 @@ window.saveObjectives = async function(){
 
     const dailyVal = parseInt(document.getElementById("obj-daily").value) || 0;
 
-    managerItemsList.forEach(item => {
+    boutiqueDisplayList.forEach(item => {
       const val = parseInt(document.getElementById("obj-" + item).value) || 0;
       updatedStoreObjectives[item] = val;
       updatedStoreInitial[item] = val;
@@ -1546,7 +1547,7 @@ window.resetWeekly = async function(){
       const resetInitial = { ...(currentBoutiqueInitial[currentStore] || {}) };
       const resetProgress = { ...(currentBoutiqueProgress[currentStore] || {}) };
 
-      managerItemsList.forEach(item => {
+      boutiqueDisplayList.forEach(item => {
         resetObjectives[item] = 0;
         resetInitial[item] = 0;
         resetProgress[item] = 0;
