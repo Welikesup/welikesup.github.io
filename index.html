@@ -48,26 +48,17 @@ text-align:center;
 }
 
 button{
-padding:8px 10px;
+padding:10px 15px;
 margin-top:10px;
 border:none;
 border-radius:8px;
 font-weight:600;
 cursor:pointer;
-font-size:12px;
-}
-
-.buttons{
-display:flex;
-justify-content:center;
-gap:5px;
-margin-top:10px;
+max-width:100%;
 }
 
 button.validate{background:white;color:black;}
-button.cancel{background:#222;color:white;}
-button.catch{background:#444;color:#fff;}
-
+button.cancel{background:#222;color:white;margin-left:8px;}
 button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 
 .hidden{display:none;}
@@ -129,7 +120,7 @@ border-radius:15px;
 
 @media(max-width:768px){
 .item{width:90%;}
-button{font-size:14px;padding:10px;}
+button{font-size:18px;padding:14px;}
 .container{margin-top:40px;}
 }
 </style>
@@ -207,6 +198,34 @@ function getToday(){
 return new Date().toLocaleDateString("fr-CA",{timeZone:"Europe/Paris"});
 }
 
+async function checkDailyReset(){
+
+await runTransaction(db,async(transaction)=>{
+
+const snap=await transaction.get(ref);
+if(!snap.exists()) return;
+
+const data=snap.data();
+const today=getToday();
+
+if(data.lastPersonalReset===today) return;
+
+let resetPersonal={};
+
+Object.values(passwords).forEach(u=>{
+resetPersonal[u]={};
+itemsList.forEach(i=>resetPersonal[u][i]=0);
+});
+
+transaction.update(ref,{
+personal:resetPersonal,
+lastPersonalReset:today
+});
+
+});
+
+}
+
 window.login=async function(){
 
 const pass=document.getElementById("password").value;
@@ -238,24 +257,24 @@ const snap=await getDoc(ref);
 
 if(!snap.exists()){
 
-let data={personal:{},weekly:{},lastPersonalReset:getToday()};
+let data={personal:{},lastPersonalReset:getToday()};
 
 itemsList.forEach(i=>data[i]=0);
 
 Object.values(passwords).forEach(u=>{
 data.personal[u]={};
-data.weekly[u]={};
-itemsList.forEach(i=>{
-data.personal[u][i]=0;
-data.weekly[u][i]=0;
-});
+itemsList.forEach(i=>data.personal[u][i]=0);
 });
 
 await setDoc(ref,data);
 
 }
 
+await checkDailyReset();
+setInterval(checkDailyReset,60000);
+
 onSnapshot(ref,(docSnap)=>{
+
 globalData=docSnap.data();
 
 itemsList.forEach(i=>{
@@ -265,6 +284,9 @@ initialObjectives[i]=globalData[i];
 });
 
 display();
+
+if(currentUser==="Mariama") renderAdmin();
+
 });
 
 }
@@ -281,8 +303,22 @@ const initial=initialObjectives[item]||remaining;
 
 const percent=initial>0?((initial-remaining)/initial)*100:100;
 
-let personalValue=globalData.personal?.[currentUser]?.[item]||0;
-let weeklyValue=globalData.weekly?.[currentUser]?.[item]||0;
+let personalValue=0;
+let detailHTML="";
+
+if(currentUser==="Mariama"){
+
+Object.entries(passwords).forEach(([key,name])=>{
+if(name!=="Mariama"){
+const val=globalData.personal?.[name]?.[item]||0;
+personalValue+=val;
+detailHTML+=`<div style="font-size:12px">${name} : ${val}</div>`;
+}
+});
+
+}else{
+personalValue=globalData.personal?.[currentUser]?.[item]||0;
+}
 
 const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
 
@@ -301,14 +337,14 @@ div.innerHTML=`
 </div>
 
 <div class="personal-line">
-Jour : <strong>${personalValue}</strong> | Semaine : <strong>${weeklyValue}</strong>
+Mes ventes aujourd'hui : <strong>${personalValue}</strong>
 </div>
 
-<div class="buttons">
-<button class="validate" onclick="decrement('${item}')">Valider</button>
+${currentUser==="Mariama"?detailHTML:""}
+
+<button class="validate" onclick="decrement('${item}')">Valider une vente</button>
+
 <button class="cancel" ${!cancelAllowed?"disabled":""} onclick="cancelSale('${item}')">Annuler</button>
-${currentUser!=="Mariama" ? `<button class="catch" onclick="catchUp('${item}')">Rattraper</button>` : ""}
-</div>
 `;
 
 container.appendChild(div);
@@ -319,12 +355,13 @@ container.appendChild(div);
 
 window.decrement=async function(item){
 
+if(!confirm("Confirmer cette vente ?")) return;
+
 cancelTimers[item]=Date.now()+20000;
 
 await updateDoc(ref,{
 [item]:increment(-1),
-[`personal.${currentUser}.${item}`]:increment(1),
-[`weekly.${currentUser}.${item}`]:increment(1)
+[`personal.${currentUser}.${item}`]:increment(1)
 });
 
 }
@@ -333,24 +370,52 @@ window.cancelSale=async function(item){
 
 if(!cancelTimers[item]||Date.now()>cancelTimers[item]) return;
 
-cancelTimers[item]=null;
+cancelTimers[item]=null; // bloque immédiatement les autres clics
 
 await updateDoc(ref,{
 [item]:increment(1),
-[`personal.${currentUser}.${item}`]:increment(-1),
-[`weekly.${currentUser}.${item}`]:increment(-1)
+[`personal.${currentUser}.${item}`]:increment(-1)
 });
 
 }
 
-window.catchUp=async function(item){
+function renderAdmin(){
 
-if(currentUser==="Mariama") return;
+const div=document.getElementById("adminInputs");
+div.innerHTML="";
 
-await updateDoc(ref,{
-[item]:increment(-1),
-[`weekly.${currentUser}.${item}`]:increment(1)
+itemsList.forEach(item=>{
+div.innerHTML+=`
+<div>
+${item} :
+<input type="number" id="obj-${item}" value="${globalData[item]||0}">
+</div>
+`;
 });
+
+}
+
+window.saveObjectives=async function(){
+
+let update={};
+
+itemsList.forEach(item=>{
+update[item]=parseInt(document.getElementById("obj-"+item).value)||0;
+initialObjectives[item]=update[item];
+});
+
+await setDoc(ref,update,{merge:true});
+
+}
+
+window.resetWeekly=async function(){
+
+if(!confirm("Réinitialiser tous les objectifs ?")) return;
+
+let reset={};
+itemsList.forEach(item=>reset[item]=0);
+
+await setDoc(ref,reset,{merge:true});
 
 }
 
