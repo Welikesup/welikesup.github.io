@@ -9,122 +9,282 @@
 
 <style>
 body{
-font-family:'Inter',sans-serif;
-background:#0f0f0f;
-color:white;
-margin:0;
+  font-family:'Inter',sans-serif;
+  background:#0f0f0f;
+  color:white;
+  margin:0;
 }
 
 .header{
-background:#000;
-padding:20px;
-text-align:center;
-box-shadow:0 5px 20px rgba(0,0,0,0.6);
+  background:#000;
+  padding:20px;
+  text-align:center;
+  box-shadow:0 5px 20px rgba(0,0,0,0.6);
 }
 
 .header img{height:60px;}
 
 .header h1{
-margin:10px 0 0 0;
-font-weight:600;
-font-size:22px;
-letter-spacing:1px;
-color:#ff7a00;
+  margin:10px 0 0 0;
+  font-weight:600;
+  font-size:22px;
+  letter-spacing:1px;
+  color:#ff7a00;
 }
 
 .container{
-margin-top:60px;
-text-align:center;
-padding:10px;
+  margin-top:60px;
+  text-align:center;
+  padding:10px;
 }
 
 input{
-padding:8px;
-width:80px;
-border-radius:8px;
-border:none;
-margin:4px;
-text-align:center;
+  padding:8px;
+  width:80px;
+  border-radius:8px;
+  border:none;
+  margin:4px;
+  text-align:center;
 }
 
 button{
-padding:8px 10px;
-margin-top:10px;
-border:none;
-border-radius:8px;
-font-weight:600;
-cursor:pointer;
-font-size:12px;
-}
-
-.buttons{
-display:flex;
-justify-content:center;
-gap:5px;
-margin-top:10px;
+  padding:10px 15px;
+  margin-top:10px;
+  border:none;
+  border-radius:8px;
+  font-weight:600;
+  cursor:pointer;
+  max-width:100%;
 }
 
 button.validate{background:white;color:black;}
-button.cancel{background:#222;color:white;}
-button.catch{background:#444;color:#fff;}
-
+button.cancel{background:#222;color:white;margin-left:8px;}
 button.cancel:disabled{opacity:0.3;cursor:not-allowed;}
 
 .hidden{display:none;}
 
 #welcome{
-text-align:center;
-margin-top:30px;
-font-weight:600;
+  text-align:center;
+  margin-top:30px;
+  font-weight:600;
 }
 
 #items{
-display:flex;
-flex-wrap:wrap;
-justify-content:center;
-padding:30px;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  padding:30px;
 }
 
 .item{
-background:#ff7a00;
-padding:20px;
-margin:15px;
-border-radius:18px;
-width:260px;
-box-shadow:0 10px 25px rgba(0,0,0,0.4);
-transition:0.2s;
+  background:#ff7a00;
+  padding:20px;
+  margin:15px;
+  border-radius:18px;
+  width:260px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.4);
+  transition:0.2s;
 }
 
 .item:hover{transform:translateY(-6px);}
-.item.success{background:#1e7e34;}
+
+.item.glow{
+  box-shadow:
+    0 0 10px rgba(30,126,52,0.7),
+    0 0 20px rgba(30,126,52,0.6),
+    0 0 30px rgba(30,126,52,0.5);
+}
+
+@keyframes leaderFlash{
+  0%{transform:scale(1);}
+  50%{transform:scale(1.05);}
+  100%{transform:scale(1);}
+}
+
+.item.leader-flash{
+  animation:leaderFlash 1s ease;
+}
 
 .progress-container{
-background:rgba(255,255,255,0.3);
-border-radius:20px;
-height:10px;
-margin-top:10px;
-overflow:hidden;
+  background:rgba(255,255,255,0.3);
+  border-radius:20px;
+  height:20px;
+  margin-top:10px;
+  overflow:hidden;
+  position:relative;
 }
 
 .progress-bar{
-height:100%;
-background:white;
-width:0%;
-transition:width 0.5s ease;
+  height:100%;
+  width:0%;
+  transition:width 0.5s ease;
+  position:absolute;
+  top:0;
+  left:0;
+  border-radius:20px;
+  background:white;
 }
 
-.item.success .progress-bar{background:#00ff88;}
+.progress-text{
+  position:relative;
+  z-index:1;
+  text-align:center;
+  width:100%;
+  line-height:20px;
+  font-size:12px;
+  font-weight:600;
+}
 
 .personal-line{
-font-size:14px;
-margin-top:10px;
+  font-size:15px;
+  margin-top:10px;
+  font-weight:700;
+  white-space:nowrap;
 }
 
-.admin-panel{
-background:#1c1c1c;
-padding:20px;
-margin:30px;
-border-radius:15px;
+.personal-line strong{
+  font-size:17px;
+}
+
+.admin-panel,
+.ranking-panel,
+.store-panel{
+  background:#1c1c1c;
+  padding:20px;
+  margin:30px;
+  border-radius:15px;
+}
+
+.ranking-panel h3,
+.store-panel h3{
+  margin-top:0;
+  margin-bottom:12px;
+}
+
+.ranking-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:8px 10px;
+  border-radius:10px;
+  margin-bottom:8px;
+  background:rgba(255,255,255,0.06);
+  font-size:14px;
+}
+
+.ranking-row.top1{background:rgba(255,215,0,0.16);}
+.ranking-row.top2{background:rgba(192,192,192,0.14);}
+.ranking-row.top3{background:rgba(205,127,50,0.16);}
+
+.ranking-left{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+.ranking-rank{
+  font-weight:700;
+  width:26px;
+  text-align:center;
+}
+
+.ranking-name{
+  font-weight:600;
+}
+
+.ranking-score{
+  font-weight:700;
+}
+
+/* Suivi boutique compact en 2 colonnes */
+.store-progress-list{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px 12px;
+}
+
+.store-progress-row{
+  border-radius:12px;
+  padding:10px 12px;
+  box-shadow:0 8px 18px rgba(0,0,0,0.25);
+  transition:0.2s;
+}
+
+.store-progress-row:hover{
+  transform:translateY(-2px);
+}
+
+.store-progress-row.glow{
+  box-shadow:
+    0 0 10px rgba(30,126,52,0.7),
+    0 0 20px rgba(30,126,52,0.6),
+    0 8px 18px rgba(0,0,0,0.25);
+}
+
+.store-progress-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:6px;
+}
+
+.store-progress-title{
+  font-size:13px;
+  font-weight:700;
+}
+
+.store-progress-meta{
+  font-size:11px;
+  text-align:right;
+  white-space:nowrap;
+  font-weight:600;
+}
+
+.store-progress-container{
+  background:rgba(255,255,255,0.3);
+  border-radius:999px;
+  height:14px;
+  overflow:hidden;
+  position:relative;
+}
+
+.store-progress-bar{
+  height:100%;
+  width:0%;
+  transition:width 0.5s ease;
+  border-radius:999px;
+  background:white;
+}
+
+.store-progress-text{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  font-size:10px;
+  font-weight:700;
+  pointer-events:none;
+}
+
+@media(max-width:768px){
+  .item{width:90%;}
+  button{font-size:18px;padding:14px;}
+  .container{margin-top:40px;}
+  .ranking-row{font-size:15px;}
+  .store-progress-list{
+    grid-template-columns:1fr;
+  }
+  .store-progress-head{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .store-progress-meta{
+    text-align:left;
+    white-space:normal;
+  }
 }
 </style>
 </head>
@@ -132,190 +292,1079 @@ border-radius:15px;
 <body>
 
 <div class="header">
-<img src="logo-stn.png">
-<h1>Suivi des ventes</h1>
+  <img src="logo-stn.png">
+  <h1>Suivi des ventes</h1>
 </div>
 
 <div id="login" class="container">
-<h2>Connexion</h2>
-<input type="password" id="password" placeholder="Mot de passe">
-<br>
-<button onclick="login()">Entrer</button>
-<p id="error" style="color:red;"></p>
+  <h2>Connexion</h2>
+  <input type="password" id="password" placeholder="Mot de passe">
+  <br>
+  <button onclick="login()">Entrer</button>
+  <p id="error" style="color:red;"></p>
 </div>
 
 <div id="app" class="hidden">
-<h2 id="welcome"></h2>
-<div id="adminPanel" class="admin-panel hidden">
-<h3>Administration</h3>
-<div id="adminInputs"></div>
-<button onclick="saveObjectives()">Valider tous les objectifs</button>
-<button onclick="resetWeekly()">Réinitialiser les objectifs</button>
-</div>
-<div id="items"></div>
+  <h2 id="welcome"></h2>
+
+  <div id="adminPanel" class="admin-panel hidden">
+    <h3 id="adminTitle">Administration</h3>
+    <div id="adminInputs"></div>
+    <button onclick="saveObjectives()">Valider tous les objectifs</button>
+    <button onclick="resetWeekly()">Réinitialiser les objectifs</button>
+  </div>
+
+  <div id="rankingPanel" class="ranking-panel hidden">
+    <h3>Classement du jour</h3>
+    <div id="rankingContent"></div>
+  </div>
+
+  <div id="items"></div>
+
+  <div id="storeTrackingPanel" class="store-panel hidden">
+    <h3 id="storeTrackingTitle">Suivi boutique</h3>
+    <div id="storeTrackingContent" class="store-progress-list"></div>
+  </div>
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, runTransaction, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const firebaseConfig={...}; // garde ton config
-
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
-const ref=doc(db,"global","objectifs");
-
-const passwords={
-"medine":"Le Havre",
-"dembele":"Evreux",
-"johannes":"Mondeville",
-"orelsan":"Caen",
-"lincheneau":"La Glacerie",
-"riles":"Rouen",
-"secteurstn":"Mariama"
+const firebaseConfig = {
+  apiKey:"AIzaSyA3nNMv12lIJcVrYyldg8dtNeRFKMldAo4",
+  authDomain:"compteur-stn.firebaseapp.com",
+  projectId:"compteur-stn",
+  storageBucket:"compteur-stn.firebasestorage.app",
+  messagingSenderId:"661197584248",
+  appId:"1:661197584248:web:1dc33900c4422df4c53a8d"
 };
 
-const itemsList=["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const ref = doc(db,"global","objectifs");
 
-let currentUser="";
-let globalData={};
-let initialObjectives={};
-let cancelTimers={};
-let isManager=false;
+/* Comptes :
+   medine = Le Havre
+   dembele = Evreux
+   johannes = Mondeville
+   orelsan = Caen
+   lincheneau = La Glacerie
+   riles = Rouen
+   secteurstn = Mariama
+
+   Versions manager :
+   medine*
+   dembele*
+   johannes*
+   orelsan*
+   lincheneau*
+   riles*
+*/
+const accounts = {
+  "afe8313a1e09a01060434b852c5a9679f9b18c9c58672f589dc013600ed353a8": { name:"Le Havre", role:"store", store:"Le Havre" },
+  "dbf90070098b8093beb40ecdf86c0d2c219a24cafc12744c38ee52db3387d3e1": { name:"Evreux", role:"store", store:"Evreux" },
+  "1d4b41c9db9172e5f151e4a5fe3c57ca3f98b8e6ba807450b10d1897c84ce72b": { name:"Mondeville", role:"store", store:"Mondeville" },
+  "1fdfb74477e81470d893db1862fbe6e13541ed6c4af7dc4bcd69d937adb4a4b5": { name:"Caen", role:"store", store:"Caen" },
+  "aecfc167335c1252cb0f17429f02bc728aeb76de696050e0df03c5a0a512bf45": { name:"La Glacerie", role:"store", store:"La Glacerie" },
+  "68521fc55ffa717c695ede130a105c51a0222fc6b7961b4a608addbca974229d": { name:"Rouen", role:"store", store:"Rouen" },
+  "014dbcb988488832f44b00a9ca5c716b6db105b7d766a1c5344d8fe3be8b5067": { name:"Mariama", role:"admin", store:null },
+
+  "615ab1a5cc9a1f4c83c47069d81d434994a8f2192d797af4f591b27d622b9cd9": { name:"Manager Le Havre", role:"manager", store:"Le Havre" },
+  "a875f3510cbf54ff5d7d5c03a0586304c3586b2843093b62043298a0d872aae5": { name:"Manager Evreux", role:"manager", store:"Evreux" },
+  "8fa15ebbbad0cb023c171c394a52ab25dcb860e22fbb87a8d84aa5f9fc042e9c": { name:"Manager Mondeville", role:"manager", store:"Mondeville" },
+  "9699d449c7f3202610a19fc7ccdfa7c044f74279292e6bdf665c1ee2a5c629d6": { name:"Manager Caen", role:"manager", store:"Caen" },
+  "29f3f6ea1d212686c8c92d18c8064752c6be34f28ef87f7273ba20eb8c35977b": { name:"Manager La Glacerie", role:"manager", store:"La Glacerie" },
+  "945c5688d0fa7d50852f530933a772045755509b2fd867de368d7e3ab08d4773": { name:"Manager Rouen", role:"manager", store:"Rouen" }
+};
+
+const storeUsers = ["Le Havre","Evreux","Mondeville","Caen","La Glacerie","Rouen"];
+const allUsers = [...storeUsers, "Mariama"];
+
+const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Pack 5J/5G"];
+const itemsWithoutObjective = ["Pack 5J/5G"];
+
+/* Nouveau suivi boutique indépendant : uniquement 8 KPI */
+const managerItemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
+
+let currentUser = "";
+let currentRole = "";
+let currentStore = null;
+let globalData = {};
+let cancelTimers = {};
+let unsubscribeSnapshot = null;
+let previousLeaderKeys = {};
 
 function getToday(){
-return new Date().toLocaleDateString("fr-CA",{timeZone:"Europe/Paris"});
+  return new Date().toLocaleDateString("fr-CA",{timeZone:"Europe/Paris"});
 }
 
-async function checkDailyReset(){
-await runTransaction(db,async(transaction)=>{
-const snap=await transaction.get(ref);
-if(!snap.exists()) return;
-const data=snap.data();
-const today=getToday();
-if(data.lastPersonalReset===today) return;
-
-let resetPersonal={};
-Object.values(passwords).forEach(u=>{
-resetPersonal[u]={};
-itemsList.forEach(i=>resetPersonal[u][i]=0);
-});
-
-transaction.update(ref,{personal:resetPersonal,lastPersonalReset:today});
-});
+async function hashPassword(password){
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2,"0")).join("");
 }
 
-window.login=async function(){
-let pass=document.getElementById("password").value.trim().toLowerCase();
-isManager=pass.endsWith("*");
-if(isManager) pass=pass.slice(0,-1);
-
-if(passwords[pass]){
-currentUser=passwords[pass];
-document.getElementById("login").classList.add("hidden");
-document.getElementById("app").classList.remove("hidden");
-document.getElementById("welcome").innerText="Bienvenue "+currentUser;
-
-if(currentUser==="Mariama"){
-document.getElementById("adminPanel").classList.remove("hidden");
+function buildEmptyPersonal(){
+  const personal = {};
+  allUsers.forEach(userName => {
+    personal[userName] = {};
+    itemsList.forEach(item => {
+      personal[userName][item] = 0;
+    });
+  });
+  return personal;
 }
 
-await initData();
-}else{
-document.getElementById("error").innerText="Mot de passe incorrect";
+function buildEmptyWeeklyPersonal(){
+  const weeklyPersonal = {};
+  allUsers.forEach(userName => {
+    weeklyPersonal[userName] = {};
+    itemsList.forEach(item => {
+      weeklyPersonal[userName][item] = 0;
+    });
+  });
+  return weeklyPersonal;
 }
+
+function buildEmptyItemMap(){
+  const map = {};
+  itemsList.forEach(item => {
+    map[item] = 0;
+  });
+  return map;
 }
+
+function buildEmptyManagerStoreMap(){
+  const map = {};
+  storeUsers.forEach(store => {
+    map[store] = {};
+    managerItemsList.forEach(item => {
+      map[store][item] = 0;
+    });
+  });
+  return map;
+}
+
+function computeSectorTotalFromPersonal(personal){
+  const sectorTotal = {};
+  itemsList.forEach(item => {
+    let total = 0;
+    storeUsers.forEach(name => {
+      total += personal?.[name]?.[item] || 0;
+    });
+    sectorTotal[item] = total;
+  });
+  return sectorTotal;
+}
+
+function computeWeeklySectorTotalFromWeeklyPersonal(weeklyPersonal){
+  const weeklySectorTotal = {};
+  itemsList.forEach(item => {
+    let total = 0;
+    storeUsers.forEach(name => {
+      total += weeklyPersonal?.[name]?.[item] || 0;
+    });
+    weeklySectorTotal[item] = total;
+  });
+  return weeklySectorTotal;
+}
+
+async function ensureDataStructure(){
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+
+    if(!snap.exists()){
+      const data = {
+        personal: buildEmptyPersonal(),
+        weeklyPersonal: buildEmptyWeeklyPersonal(),
+        initial: buildEmptyItemMap(),
+        sectorTotal: buildEmptyItemMap(),
+        weeklySectorTotal: buildEmptyItemMap(),
+        boutiqueObjectives: buildEmptyManagerStoreMap(),
+        boutiqueInitial: buildEmptyManagerStoreMap(),
+        boutiqueProgress: buildEmptyManagerStoreMap(),
+        lastPersonalReset: getToday()
+      };
+
+      itemsList.forEach(item => {
+        data[item] = 0;
+      });
+
+      transaction.set(ref, data);
+      return;
+    }
+
+    const data = snap.data();
+    let patch = {};
+    let needsPatch = false;
+
+    const safePersonal = data.personal || {};
+    let patchedPersonal = null;
+    let personalChanged = false;
+
+    allUsers.forEach(userName => {
+      if(!safePersonal[userName]){
+        if(!patchedPersonal) patchedPersonal = structuredClone(safePersonal);
+        patchedPersonal[userName] = {};
+        itemsList.forEach(item => patchedPersonal[userName][item] = 0);
+        personalChanged = true;
+        return;
+      }
+
+      itemsList.forEach(item => {
+        if(typeof safePersonal[userName][item] !== "number"){
+          if(!patchedPersonal) patchedPersonal = structuredClone(safePersonal);
+          if(!patchedPersonal[userName]) patchedPersonal[userName] = {};
+          patchedPersonal[userName][item] = 0;
+          personalChanged = true;
+        }
+      });
+    });
+
+    if(personalChanged){
+      patch.personal = patchedPersonal;
+      needsPatch = true;
+    }
+
+    const safeWeeklyPersonal = data.weeklyPersonal || {};
+    let patchedWeeklyPersonal = null;
+    let weeklyPersonalChanged = false;
+
+    allUsers.forEach(userName => {
+      if(!safeWeeklyPersonal[userName]){
+        if(!patchedWeeklyPersonal) patchedWeeklyPersonal = structuredClone(safeWeeklyPersonal);
+        patchedWeeklyPersonal[userName] = {};
+        itemsList.forEach(item => patchedWeeklyPersonal[userName][item] = 0);
+        weeklyPersonalChanged = true;
+        return;
+      }
+
+      itemsList.forEach(item => {
+        if(typeof safeWeeklyPersonal[userName][item] !== "number"){
+          if(!patchedWeeklyPersonal) patchedWeeklyPersonal = structuredClone(safeWeeklyPersonal);
+          if(!patchedWeeklyPersonal[userName]) patchedWeeklyPersonal[userName] = {};
+          patchedWeeklyPersonal[userName][item] = 0;
+          weeklyPersonalChanged = true;
+        }
+      });
+    });
+
+    if(weeklyPersonalChanged){
+      patch.weeklyPersonal = patchedWeeklyPersonal;
+      needsPatch = true;
+    }
+
+    const safeInitial = data.initial || {};
+    const patchedInitial = { ...safeInitial };
+    let initialChanged = false;
+
+    itemsList.forEach(item => {
+      if(typeof safeInitial[item] !== "number"){
+        patchedInitial[item] = 0;
+        initialChanged = true;
+      }
+    });
+
+    if(initialChanged){
+      patch.initial = patchedInitial;
+      needsPatch = true;
+    }
+
+    const currentPersonal = personalChanged ? patchedPersonal : safePersonal;
+    const safeSectorTotal = data.sectorTotal || {};
+    const patchedSectorTotal = { ...safeSectorTotal };
+    let sectorTotalChanged = false;
+    const recomputedSectorTotal = computeSectorTotalFromPersonal(currentPersonal);
+
+    itemsList.forEach(item => {
+      if(typeof safeSectorTotal[item] !== "number"){
+        patchedSectorTotal[item] = recomputedSectorTotal[item] || 0;
+        sectorTotalChanged = true;
+      }
+    });
+
+    if(sectorTotalChanged){
+      patch.sectorTotal = patchedSectorTotal;
+      needsPatch = true;
+    }
+
+    const currentWeeklyPersonal = weeklyPersonalChanged ? patchedWeeklyPersonal : safeWeeklyPersonal;
+    const safeWeeklySectorTotal = data.weeklySectorTotal || {};
+    const patchedWeeklySectorTotal = { ...safeWeeklySectorTotal };
+    let weeklySectorTotalChanged = false;
+    const recomputedWeeklySectorTotal = computeWeeklySectorTotalFromWeeklyPersonal(currentWeeklyPersonal);
+
+    itemsList.forEach(item => {
+      if(typeof safeWeeklySectorTotal[item] !== "number"){
+        patchedWeeklySectorTotal[item] = recomputedWeeklySectorTotal[item] || 0;
+        weeklySectorTotalChanged = true;
+      }
+    });
+
+    if(weeklySectorTotalChanged){
+      patch.weeklySectorTotal = patchedWeeklySectorTotal;
+      needsPatch = true;
+    }
+
+    const safeBoutiqueObjectives = data.boutiqueObjectives || {};
+    const safeBoutiqueInitial = data.boutiqueInitial || {};
+    const safeBoutiqueProgress = data.boutiqueProgress || {};
+
+    let patchedBoutiqueObjectives = structuredClone(safeBoutiqueObjectives);
+    let patchedBoutiqueInitial = structuredClone(safeBoutiqueInitial);
+    let patchedBoutiqueProgress = structuredClone(safeBoutiqueProgress);
+    let boutiqueChanged = false;
+
+    storeUsers.forEach(store => {
+      if(!patchedBoutiqueObjectives[store]){
+        patchedBoutiqueObjectives[store] = {};
+        boutiqueChanged = true;
+      }
+      if(!patchedBoutiqueInitial[store]){
+        patchedBoutiqueInitial[store] = {};
+        boutiqueChanged = true;
+      }
+      if(!patchedBoutiqueProgress[store]){
+        patchedBoutiqueProgress[store] = {};
+        boutiqueChanged = true;
+      }
+
+      managerItemsList.forEach(item => {
+        if(typeof patchedBoutiqueObjectives[store][item] !== "number"){
+          patchedBoutiqueObjectives[store][item] = 0;
+          boutiqueChanged = true;
+        }
+        if(typeof patchedBoutiqueInitial[store][item] !== "number"){
+          patchedBoutiqueInitial[store][item] = 0;
+          boutiqueChanged = true;
+        }
+        if(typeof patchedBoutiqueProgress[store][item] !== "number"){
+          patchedBoutiqueProgress[store][item] = 0;
+          boutiqueChanged = true;
+        }
+      });
+    });
+
+    if(boutiqueChanged){
+      patch.boutiqueObjectives = patchedBoutiqueObjectives;
+      patch.boutiqueInitial = patchedBoutiqueInitial;
+      patch.boutiqueProgress = patchedBoutiqueProgress;
+      needsPatch = true;
+    }
+
+    if(typeof data.lastPersonalReset !== "string"){
+      patch.lastPersonalReset = getToday();
+      needsPatch = true;
+    }
+
+    itemsList.forEach(item => {
+      if(typeof data[item] !== "number"){
+        patch[item] = 0;
+        needsPatch = true;
+      }
+    });
+
+    if(needsPatch){
+      transaction.set(ref, patch, { merge:true });
+    }
+  });
+}
+
+async function resetDailyPersonalIfNeeded(){
+  const today = getToday();
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+
+    const data = snap.data();
+    if(data.lastPersonalReset === today) return;
+
+    transaction.set(ref, {
+      personal: buildEmptyPersonal(),
+      lastPersonalReset: today
+    }, { merge:true });
+  });
+}
+
+function isMariama(){
+  return currentRole === "admin";
+}
+
+function isManager(){
+  return currentRole === "manager";
+}
+
+function isStoreAccount(){
+  return currentRole === "store";
+}
+
+function hasMariamaTileView(){
+  return isMariama() || isManager();
+}
+
+window.login = async function(){
+  const pass = document.getElementById("password").value;
+
+  if(!window.crypto || !window.crypto.subtle){
+    alert("Navigateur non compatible. Utilisez Chrome ou Safari récent.");
+    return;
+  }
+
+  try{
+    const hashed = await hashPassword(pass);
+    const account = accounts[hashed];
+
+    if(!account){
+      document.getElementById("error").innerText = "Mot de passe incorrect";
+      return;
+    }
+
+    currentUser = account.name;
+    currentRole = account.role;
+    currentStore = account.store;
+
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.getElementById("welcome").innerText = "Bienvenue " + currentUser;
+
+    if(isMariama() || isManager()){
+      document.getElementById("adminPanel").classList.remove("hidden");
+      document.getElementById("rankingPanel").classList.remove("hidden");
+    }
+
+    if(isStoreAccount() || isManager()){
+      document.getElementById("storeTrackingPanel").classList.remove("hidden");
+    }
+
+    await initData();
+  }catch(e){
+    console.error(e);
+    alert("Erreur lors de la connexion.");
+  }
+};
 
 async function initData(){
-const snap=await getDoc(ref);
+  await ensureDataStructure();
 
-if(!snap.exists()){
-let data={personal:{},lastPersonalReset:getToday()};
-itemsList.forEach(i=>data[i]=0);
-Object.values(passwords).forEach(u=>{
-data.personal[u]={};
-itemsList.forEach(i=>data.personal[u][i]=0);
-});
-await setDoc(ref,data);
+  if(unsubscribeSnapshot){
+    unsubscribeSnapshot();
+    unsubscribeSnapshot = null;
+  }
+
+  unsubscribeSnapshot = onSnapshot(ref, (docSnap) => {
+    globalData = docSnap.data() || {};
+    display();
+
+    if(isMariama() || isManager()){
+      renderAdmin();
+      renderRanking();
+    }
+
+    if(isStoreAccount() || isManager()){
+      renderStoreTracking();
+    }
+  });
+
+  await resetDailyPersonalIfNeeded();
 }
 
-await checkDailyReset();
+function renderRanking(){
+  const rankingContent = document.getElementById("rankingContent");
+  if(!rankingContent) return;
 
-onSnapshot(ref,(docSnap)=>{
-globalData=docSnap.data();
-itemsList.forEach(i=>{
-if(initialObjectives[i]===undefined){
-initialObjectives[i]=globalData[i];
-}
-});
-display();
-});
+  const rankingData = storeUsers.map(name => {
+    let total = 0;
+    itemsList.forEach(item => {
+      total += globalData.personal?.[name]?.[item] || 0;
+    });
+    return { name, total };
+  });
+
+  rankingData.sort((a,b) => {
+    if(b.total !== a.total) return b.total - a.total;
+    return a.name.localeCompare(b.name, "fr");
+  });
+
+  const hasSales = rankingData.some(row => row.total > 0);
+
+  if(!hasSales){
+    rankingContent.innerHTML = `<div style="opacity:0.8;">Aucune vente aujourd'hui</div>`;
+    return;
+  }
+
+  rankingContent.innerHTML = rankingData.map((row,index) => {
+    let extraClass = "";
+    let medal = "";
+
+    if(index === 0){ extraClass = "top1"; medal = "🥇"; }
+    else if(index === 1){ extraClass = "top2"; medal = "🥈"; }
+    else if(index === 2){ extraClass = "top3"; medal = "🥉"; }
+
+    return `
+      <div class="ranking-row ${extraClass}">
+        <div class="ranking-left">
+          <div class="ranking-rank">${medal || (index + 1)}</div>
+          <div class="ranking-name">${row.name}</div>
+        </div>
+        <div class="ranking-score">${row.total}</div>
+      </div>
+    `;
+  }).join("");
 }
 
 function display(){
-const container=document.getElementById("items");
-container.innerHTML="";
+  const container = document.getElementById("items");
+  container.innerHTML = "";
 
-itemsList.forEach(item=>{
+  const nextLeaderKeys = {};
 
-const remaining=globalData[item]||0;
-const initial=initialObjectives[item]||remaining;
-const percent=initial>0?((initial-remaining)/initial)*100:100;
+  itemsList.forEach(item => {
+    const hasObjective = !itemsWithoutObjective.includes(item);
 
-let personalValue=globalData.personal?.[currentUser]?.[item]||0;
-const cancelAllowed=cancelTimers[item] && Date.now()<cancelTimers[item];
+    const initial = globalData.initial?.[item] ?? 0;
+    const cumulativeValue = globalData.sectorTotal?.[item] || 0;
+    const weeklySectorValue = globalData.weeklySectorTotal?.[item] || 0;
 
-const div=document.createElement("div");
-div.className="item";
+    let todaySectorValue = 0;
+    storeUsers.forEach(name => {
+      todaySectorValue += globalData.personal?.[name]?.[item] || 0;
+    });
 
-div.innerHTML=`
-<h3>${item}</h3>
-<p>Objectif restant: <strong>${remaining}</strong></p>
+    const storeTodayValue = currentStore ? (globalData.personal?.[currentStore]?.[item] || 0) : 0;
+    const storeWeekValue = currentStore ? (globalData.weeklyPersonal?.[currentStore]?.[item] || 0) : 0;
 
-<div class="progress-container">
-<div class="progress-bar" style="width:${percent}%"></div>
-</div>
+    const diff = initial - cumulativeValue;
+    const percentBar = Math.min(initial > 0 ? (cumulativeValue / initial) * 100 : 0, 100);
+    const percentText = initial > 0 ? (cumulativeValue / initial) * 100 : 0;
 
-<div class="personal-line">
-Mes ventes aujourd'hui : <strong>${personalValue}</strong>
-</div>
+    let percentColor = "#ff7a00";
+    if(percentText >= 100 && percentText < 120) percentColor = "#66cc88";
+    if(percentText >= 120) percentColor = "#1e7e34";
 
-<div class="buttons">
-<button class="validate" onclick="decrement('${item}')">Valider</button>
-<button class="cancel" ${!cancelAllowed?"disabled":""} onclick="cancelSale('${item}')">Annuler</button>
-${isManager ? `<button class="catch" onclick="catchUp('${item}')">Rattraper</button>` : ""}
-</div>
-`;
+    const userValue = hasMariamaTileView()
+      ? todaySectorValue
+      : (globalData.personal?.[currentUser]?.[item] || 0);
 
-container.appendChild(div);
-});
+    const weeklyUserValue = hasMariamaTileView()
+      ? weeklySectorValue
+      : (globalData.weeklyPersonal?.[currentUser]?.[item] || 0);
+
+    const weeklyText = hasMariamaTileView()
+      ? "Ventes du secteur semaine"
+      : "Ventes de la boutique semaine";
+
+    const personalText = hasMariamaTileView()
+      ? "Ventes du secteur aujourd'hui"
+      : "Ventes de la boutique aujourd'hui";
+
+    let detailHTML = "";
+    if(hasMariamaTileView()){
+      storeUsers.forEach(name => {
+        const val = globalData.personal?.[name]?.[item] || 0;
+        detailHTML += `<div style="font-size:12px">${name} : ${val}</div>`;
+      });
+    }
+
+    let leaderValue = 0;
+    let leaders = [];
+
+    storeUsers.forEach(name => {
+      const val = globalData.personal?.[name]?.[item] || 0;
+
+      if(val > leaderValue){
+        leaderValue = val;
+        leaders = [name];
+      } else if(val === leaderValue && val > 0){
+        leaders.push(name);
+      }
+    });
+
+    const leaderKey = leaderValue > 0 ? `${leaders.join("|")}::${leaderValue}` : "";
+    nextLeaderKeys[item] = leaderKey;
+
+    let leaderHTML = "";
+    if(hasMariamaTileView() && leaderValue > 0){
+      const leaderNames = leaders.join(" / ");
+      leaderHTML = `<div style="
+        font-size:13px;
+        margin-top:10px;
+        font-weight:700;
+        color:#FFD700;
+        text-shadow:
+          1px 1px 0 #000,
+         -1px 1px 0 #000,
+          1px -1px 0 #000,
+         -1px -1px 0 #000;
+      ">🏆 Boutique leader : ${leaderNames} (${leaderValue})</div>`;
+    }
+
+    const cancelAllowed = !!(cancelTimers[item] && Date.now() < cancelTimers[item]);
+    const canSell = !isMariama();
+
+    const div = document.createElement("div");
+    div.className = "item";
+
+    if(hasObjective){
+      if(percentText >= 120){
+        div.style.background = "#1e7e34";
+        div.classList.add("glow");
+      } else if(percentText >= 100){
+        div.style.background = "#66cc88";
+      } else {
+        div.style.background = "#ff7a00";
+      }
+    } else {
+      div.style.background = "#ff7a00";
+    }
+
+    if(
+      hasMariamaTileView() &&
+      leaderValue > 0 &&
+      previousLeaderKeys[item] !== undefined &&
+      previousLeaderKeys[item] !== leaderKey
+    ){
+      div.classList.add("leader-flash");
+    }
+
+    const objectifText = diff >= 0
+      ? `Objectif restant : <strong>${diff}</strong>`
+      : `Objectif dépassé de : <strong>${-diff}</strong>`;
+
+    const objectiveBlock = hasObjective ? `
+      <p>${objectifText}</p>
+
+      <div class="progress-container">
+        <div class="progress-bar" style="width:${percentBar}%"></div>
+        <div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
+      </div>
+    ` : ``;
+
+    let extraManagerLines = "";
+    if(isManager()){
+      extraManagerLines = `
+        <div class="personal-line">
+          Boutique semaine : <strong>${storeWeekValue}</strong>
+        </div>
+
+        <div class="personal-line">
+          Boutique aujourd’hui : <strong>${storeTodayValue}</strong>
+        </div>
+
+        <div class="personal-line">
+          Secteur semaine : <strong>${weeklySectorValue}</strong>
+        </div>
+
+        <div class="personal-line">
+          Secteur aujourd’hui : <strong>${todaySectorValue}</strong>
+        </div>
+      `;
+    }
+
+    div.innerHTML = `
+      <h3>${item}</h3>
+      ${objectiveBlock}
+
+      ${
+        isManager()
+          ? extraManagerLines
+          : `
+            <div class="personal-line">
+              ${weeklyText} : <strong>${weeklyUserValue}</strong>
+            </div>
+
+            <div class="personal-line">
+              ${personalText} : <strong>${userValue}</strong>
+            </div>
+          `
+      }
+
+      ${detailHTML}
+      ${leaderHTML}
+
+      ${canSell ? `
+        <button class="validate" onclick="decrement('${item}')">Valider une vente</button>
+        <button class="cancel" ${!cancelAllowed ? "disabled" : ""} onclick="cancelSale('${item}')">Annuler</button>
+      ` : ""}
+    `;
+
+    container.appendChild(div);
+  });
+
+  previousLeaderKeys = nextLeaderKeys;
 }
 
-window.decrement=async function(item){
-cancelTimers[item]=Date.now()+20000;
-await updateDoc(ref,{
-[item]:increment(-1),
-[`personal.${currentUser}.${item}`]:increment(1)
-});
+function renderStoreTracking(){
+  const panel = document.getElementById("storeTrackingPanel");
+  const title = document.getElementById("storeTrackingTitle");
+  const content = document.getElementById("storeTrackingContent");
+
+  if(!panel || !title || !content || !currentStore) return;
+
+  panel.classList.remove("hidden");
+  title.textContent = `Suivi boutique — ${currentStore}`;
+
+  const storeObjectives = globalData.boutiqueObjectives?.[currentStore] || {};
+  const storeInitial = globalData.boutiqueInitial?.[currentStore] || {};
+  const storeProgress = globalData.boutiqueProgress?.[currentStore] || {};
+
+  content.innerHTML = managerItemsList.map(item => {
+    const objective = storeObjectives[item] ?? 0;
+    const initial = storeInitial[item] ?? objective ?? 0;
+    const progress = storeProgress[item] ?? 0;
+
+    const diff = initial - progress;
+    const percentText = initial > 0 ? (progress / initial) * 100 : 0;
+    const percentBar = Math.min(percentText, 100);
+
+    let bgColor = "#ff7a00";
+    let textColor = "#ff7a00";
+    let extraClass = "";
+
+    if(percentText >= 120){
+      bgColor = "#1e7e34";
+      textColor = "#1e7e34";
+      extraClass = "glow";
+    } else if(percentText >= 100){
+      bgColor = "#66cc88";
+      textColor = "#66cc88";
+    }
+
+    const metaText = initial > 0
+      ? (diff >= 0
+        ? `Reste : ${diff} • ${progress}/${initial}`
+        : `Dépassé : ${-diff} • ${progress}/${initial}`)
+      : `Aucun objectif • ${progress}`;
+
+    return `
+      <div class="store-progress-row ${extraClass}" style="background:${bgColor};">
+        <div class="store-progress-head">
+          <div class="store-progress-title">${item}</div>
+          <div class="store-progress-meta">${metaText}</div>
+        </div>
+
+        <div class="store-progress-container">
+          <div class="store-progress-bar" style="width:${percentBar}%;"></div>
+          <div class="store-progress-text" style="color:${textColor};">${initial > 0 ? percentText.toFixed(0) + "%" : "0%"}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
-window.cancelSale=async function(item){
-if(!cancelTimers[item]||Date.now()>cancelTimers[item]) return;
-cancelTimers[item]=null;
-await updateDoc(ref,{
-[item]:increment(1),
-[`personal.${currentUser}.${item}`]:increment(-1)
-});
+window.decrement = async function(item){
+  if(isMariama()) return;
+  if(!confirm("Confirmer cette vente ?")) return;
+
+  cancelTimers[item] = Date.now() + 20000;
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+
+    const data = snap.data();
+    const currentPersonal = data.personal || {};
+    const currentWeeklyPersonal = data.weeklyPersonal || {};
+    const currentSectorTotal = data.sectorTotal || {};
+    const currentWeeklySectorTotal = data.weeklySectorTotal || {};
+    const currentBoutiqueProgress = data.boutiqueProgress || {};
+
+    const targetStore = isManager() ? currentStore : currentUser;
+
+    const userItemValue = currentPersonal?.[targetStore]?.[item] || 0;
+    const weeklyUserItemValue = currentWeeklyPersonal?.[targetStore]?.[item] || 0;
+    const sectorItemValue = currentSectorTotal?.[item] || 0;
+    const weeklySectorItemValue = currentWeeklySectorTotal?.[item] || 0;
+
+    const payload = {
+      personal: {
+        ...currentPersonal,
+        [targetStore]: {
+          ...(currentPersonal[targetStore] || {}),
+          [item]: userItemValue + 1
+        }
+      },
+      weeklyPersonal: {
+        ...currentWeeklyPersonal,
+        [targetStore]: {
+          ...(currentWeeklyPersonal[targetStore] || {}),
+          [item]: weeklyUserItemValue + 1
+        }
+      },
+      sectorTotal: {
+        ...currentSectorTotal,
+        [item]: sectorItemValue + 1
+      },
+      weeklySectorTotal: {
+        ...currentWeeklySectorTotal,
+        [item]: weeklySectorItemValue + 1
+      }
+    };
+
+    if(managerItemsList.includes(item)){
+      const storeProgressMap = currentBoutiqueProgress?.[targetStore] || {};
+      const currentStoreProgressValue = storeProgressMap?.[item] || 0;
+
+      payload.boutiqueProgress = {
+        ...currentBoutiqueProgress,
+        [targetStore]: {
+          ...storeProgressMap,
+          [item]: currentStoreProgressValue + 1
+        }
+      };
+    }
+
+    transaction.set(ref, payload, { merge:true });
+  });
+};
+
+window.cancelSale = async function(item){
+  if(isMariama()) return;
+  if(!cancelTimers[item] || Date.now() > cancelTimers[item]) return;
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+
+    const data = snap.data();
+    const currentPersonal = data.personal || {};
+    const currentWeeklyPersonal = data.weeklyPersonal || {};
+    const currentSectorTotal = data.sectorTotal || {};
+    const currentWeeklySectorTotal = data.weeklySectorTotal || {};
+    const currentBoutiqueProgress = data.boutiqueProgress || {};
+
+    const targetStore = isManager() ? currentStore : currentUser;
+
+    const userItemValue = currentPersonal?.[targetStore]?.[item] || 0;
+    const weeklyUserItemValue = currentWeeklyPersonal?.[targetStore]?.[item] || 0;
+    const sectorItemValue = currentSectorTotal?.[item] || 0;
+    const weeklySectorItemValue = currentWeeklySectorTotal?.[item] || 0;
+
+    const payload = {
+      personal: {
+        ...currentPersonal,
+        [targetStore]: {
+          ...(currentPersonal[targetStore] || {}),
+          [item]: Math.max(userItemValue - 1, 0)
+        }
+      },
+      weeklyPersonal: {
+        ...currentWeeklyPersonal,
+        [targetStore]: {
+          ...(currentWeeklyPersonal[targetStore] || {}),
+          [item]: Math.max(weeklyUserItemValue - 1, 0)
+        }
+      },
+      sectorTotal: {
+        ...currentSectorTotal,
+        [item]: Math.max(sectorItemValue - 1, 0)
+      },
+      weeklySectorTotal: {
+        ...currentWeeklySectorTotal,
+        [item]: Math.max(weeklySectorItemValue - 1, 0)
+      }
+    };
+
+    if(managerItemsList.includes(item)){
+      const storeProgressMap = currentBoutiqueProgress?.[targetStore] || {};
+      const currentStoreProgressValue = storeProgressMap?.[item] || 0;
+
+      payload.boutiqueProgress = {
+        ...currentBoutiqueProgress,
+        [targetStore]: {
+          ...storeProgressMap,
+          [item]: Math.max(currentStoreProgressValue - 1, 0)
+        }
+      };
+    }
+
+    transaction.set(ref, payload, { merge:true });
+  });
+
+  cancelTimers[item] = null;
+};
+
+function renderAdmin(){
+  const div = document.getElementById("adminInputs");
+  const title = document.getElementById("adminTitle");
+  div.innerHTML = "";
+
+  if(isMariama()){
+    title.textContent = "Administration";
+
+    itemsList.forEach(item => {
+      if(itemsWithoutObjective.includes(item)) return;
+
+      div.innerHTML += `
+        <div>
+          ${item} :
+          <input type="number" id="obj-${item}" value="${globalData[item] || 0}">
+        </div>
+      `;
+    });
+    return;
+  }
+
+  if(isManager()){
+    title.textContent = `Administration boutique — ${currentStore}`;
+
+    const boutiqueObjectives = globalData.boutiqueObjectives?.[currentStore] || {};
+
+    managerItemsList.forEach(item => {
+      div.innerHTML += `
+        <div>
+          ${item} :
+          <input type="number" id="obj-${item}" value="${boutiqueObjectives[item] || 0}">
+        </div>
+      `;
+    });
+  }
 }
 
-window.catchUp=async function(item){
-if(!isManager) return;
-await updateDoc(ref,{
-[item]:increment(-1)
-});
-}
+window.saveObjectives = async function(){
+  if(!confirm("Valider les nouveaux objectifs ?")) return;
 
+  if(isMariama()){
+    let update = {};
+    let initial = { ...(globalData.initial || {}) };
+
+    itemsList.forEach(item => {
+      if(itemsWithoutObjective.includes(item)) return;
+
+      const val = parseInt(document.getElementById("obj-" + item).value) || 0;
+      update[item] = val;
+      initial[item] = val;
+    });
+
+    await setDoc(ref, {
+      ...update,
+      initial: initial
+    }, { merge:true });
+
+    return;
+  }
+
+  if(isManager()){
+    const currentBoutiqueObjectives = globalData.boutiqueObjectives || {};
+    const currentBoutiqueInitial = globalData.boutiqueInitial || {};
+    const currentBoutiqueProgress = globalData.boutiqueProgress || {};
+
+    const updatedStoreObjectives = { ...(currentBoutiqueObjectives[currentStore] || {}) };
+    const updatedStoreInitial = { ...(currentBoutiqueInitial[currentStore] || {}) };
+    const resetStoreProgress = { ...(currentBoutiqueProgress[currentStore] || {}) };
+
+    managerItemsList.forEach(item => {
+      const val = parseInt(document.getElementById("obj-" + item).value) || 0;
+      updatedStoreObjectives[item] = val;
+      updatedStoreInitial[item] = val;
+      resetStoreProgress[item] = 0;
+    });
+
+    await setDoc(ref, {
+      boutiqueObjectives: {
+        ...currentBoutiqueObjectives,
+        [currentStore]: updatedStoreObjectives
+      },
+      boutiqueInitial: {
+        ...currentBoutiqueInitial,
+        [currentStore]: updatedStoreInitial
+      },
+      boutiqueProgress: {
+        ...currentBoutiqueProgress,
+        [currentStore]: resetStoreProgress
+      }
+    }, { merge:true });
+  }
+};
+
+window.resetWeekly = async function(){
+  if(!confirm("Réinitialiser tous les objectifs ?")) return;
+
+  if(isMariama()){
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if(!snap.exists()) return;
+
+      const data = snap.data();
+      const currentInitial = data.initial || {};
+      const currentSectorTotal = data.sectorTotal || {};
+      const currentWeeklySectorTotal = data.weeklySectorTotal || {};
+
+      const topLevelReset = {};
+      const initialReset = { ...currentInitial };
+      const sectorTotalReset = { ...currentSectorTotal };
+      const weeklySectorTotalReset = { ...currentWeeklySectorTotal };
+
+      itemsList.forEach(item => {
+        if(!itemsWithoutObjective.includes(item)){
+          topLevelReset[item] = 0;
+          initialReset[item] = 0;
+        }
+        sectorTotalReset[item] = 0;
+        weeklySectorTotalReset[item] = 0;
+      });
+
+      transaction.set(ref, {
+        ...topLevelReset,
+        initial: initialReset,
+        sectorTotal: sectorTotalReset,
+        weeklySectorTotal: weeklySectorTotalReset,
+        weeklyPersonal: buildEmptyWeeklyPersonal()
+      }, { merge:true });
+    });
+
+    return;
+  }
+
+  if(isManager()){
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if(!snap.exists()) return;
+
+      const data = snap.data();
+      const currentBoutiqueObjectives = data.boutiqueObjectives || {};
+      const currentBoutiqueInitial = data.boutiqueInitial || {};
+      const currentBoutiqueProgress = data.boutiqueProgress || {};
+
+      const resetObjectives = { ...(currentBoutiqueObjectives[currentStore] || {}) };
+      const resetInitial = { ...(currentBoutiqueInitial[currentStore] || {}) };
+      const resetProgress = { ...(currentBoutiqueProgress[currentStore] || {}) };
+
+      managerItemsList.forEach(item => {
+        resetObjectives[item] = 0;
+        resetInitial[item] = 0;
+        resetProgress[item] = 0;
+      });
+
+      transaction.set(ref, {
+        boutiqueObjectives: {
+          ...currentBoutiqueObjectives,
+          [currentStore]: resetObjectives
+        },
+        boutiqueInitial: {
+          ...currentBoutiqueInitial,
+          [currentStore]: resetInitial
+        },
+        boutiqueProgress: {
+          ...currentBoutiqueProgress,
+          [currentStore]: resetProgress
+        }
+      }, { merge:true });
+    });
+  }
+};
+
+/* Touche Entrée sur le champ mot de passe */
+document.getElementById("password").addEventListener("keydown", function(event){
+  if(event.key === "Enter"){
+    event.preventDefault();
+    login();
+  }
+});
 </script>
+
 </body>
 </html>
