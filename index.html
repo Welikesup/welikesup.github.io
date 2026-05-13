@@ -1033,7 +1033,7 @@ function display(){
       });
     }
 
-    const cancelAllowed = !!(cancelTimers[item] && Date.now() < cancelTimers[item]);
+    const cancelAllowed = isManager() ? true : !!(cancelTimers[item] && Date.now() < cancelTimers[item]);
     const canSell = !isAdmin();
 
     const div = document.createElement("div");
@@ -1443,7 +1443,7 @@ window.decrement = async function(item){
    ===================================================================== */
 window.cancelSale = async function(item){
   if(isAdmin()) return;
-  if(!cancelTimers[item] || Date.now() > cancelTimers[item]) return;
+  if(!isManager() && (!cancelTimers[item] || Date.now() > cancelTimers[item])) return;
 
   await runTransaction(db, async (transaction) => {
     const snap = await transaction.get(ref);
