@@ -1499,7 +1499,11 @@ window.cancelSale = async function(item){
    ===================================================================== */
 window.catchUpSale = async function(item){
   if(!isManager()) return;
-  if(!confirm("Rattraper une vente semaine pour " + item + " ?")) return;
+
+  const input = prompt(`Combien de placements à rattraper pour ${item} ?`, "1");
+  if(input === null) return;
+  const qty = parseInt(input);
+  if(isNaN(qty) || qty <= 0){ alert("Veuillez saisir un nombre valide."); return; }
 
   await runTransaction(db, async (transaction) => {
     const snap = await transaction.get(ref);
@@ -1516,11 +1520,11 @@ window.catchUpSale = async function(item){
     const payload = {
       weeklyPersonal: {
         ...cWP,
-        [targetStore]: { ...(cWP[targetStore]||{}), [item]: (cWP[targetStore]?.[item]||0)+1 }
+        [targetStore]: { ...(cWP[targetStore]||{}), [item]: (cWP[targetStore]?.[item]||0) + qty }
       },
       weeklySectorTotals: {
         ...cWST,
-        [targetSector]: { ...(cWST[targetSector]||{}), [item]: (cWST[targetSector]?.[item]||0)+1 }
+        [targetSector]: { ...(cWST[targetSector]||{}), [item]: (cWST[targetSector]?.[item]||0) + qty }
       }
     };
 
@@ -1528,7 +1532,7 @@ window.catchUpSale = async function(item){
       const bpm = cBP[targetStore] || {};
       payload.boutiqueProgress = {
         ...cBP,
-        [targetStore]: { ...bpm, [item]: (bpm[item]||0)+1 }
+        [targetStore]: { ...bpm, [item]: (bpm[item]||0) + qty }
       };
     }
 
