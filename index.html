@@ -997,9 +997,9 @@ function display(){
 
     /* Objectif secteur = sectorTotals initial (géré par admin via un champ dédié) */
     const sectorInitial  = globalData.sectorInitial?.[currentSector]?.[item] || 0;
-    const diff           = sectorInitial - sectorTotal;
-    const percentBar     = Math.min(sectorInitial > 0 ? (sectorTotal / sectorInitial) * 100 : 0, 100);
-    const percentText    = sectorInitial > 0 ? (sectorTotal / sectorInitial) * 100 : 0;
+    const diff           = sectorInitial - weeklySector;
+    const percentBar     = Math.min(sectorInitial > 0 ? (weeklySector / sectorInitial) * 100 : 0, 100);
+    const percentText    = sectorInitial > 0 ? (weeklySector / sectorInitial) * 100 : 0;
 
     let percentColor = "#ff7a00";
     if(percentText >= 100 && percentText < 120) percentColor = "#66cc88";
