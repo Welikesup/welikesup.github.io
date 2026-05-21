@@ -1354,9 +1354,9 @@ function renderDirector(){
           </div>` : "";
 
         const objectifText = sectorInitial > 0
-          ? (todayTotal <= sectorInitial
-            ? `Reste : ${sectorInitial - todayTotal}`
-            : `Dépassé : +${todayTotal - sectorInitial}`)
+          ? (weeklyTotal <= sectorInitial
+            ? `Reste : ${sectorInitial - weeklyTotal}`
+            : `Dépassé : +${weeklyTotal - sectorInitial}`)
           : "";
 
         return `
