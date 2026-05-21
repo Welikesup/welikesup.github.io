@@ -1905,43 +1905,61 @@ function renderAccessoireTile(){
   container.appendChild(tile);
 }
 
+function showAmountModal(title, label, callback){
+  const modal = document.createElement("div");
+  modal.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;justify-content:center;align-items:center;";
+  modal.innerHTML = `
+    <div style="background:#1c1c1c;border-radius:16px;padding:24px;min-width:260px;max-width:320px;width:90%;">
+      <div style="font-weight:700;font-size:15px;color:#ff7a00;margin-bottom:14px;">${title}</div>
+      <label style="font-size:13px;color:white;">${label}</label>
+      <input type="number" class="amount-modal-input" value="0" step="0.01" min="0"
+        style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:none;text-align:center;font-size:16px;">
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="amount-modal-ok" style="flex:1;background:#ff7a00;color:white;border:none;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;">Valider</button>
+        <button class="amount-modal-cancel" style="flex:1;background:#333;color:white;border:none;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;">Annuler</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector(".amount-modal-cancel").onclick = () => modal.remove();
+  modal.querySelector(".amount-modal-ok").onclick = () => {
+    const montant = parseFloat(modal.querySelector(".amount-modal-input").value.replace(",","."));
+    modal.remove();
+    if(isNaN(montant) || montant <= 0){ alert("Montant invalide."); return; }
+    callback(montant);
+  };
+}
+
 window.validateAccessoire = async function(){
   const store = isManager() ? currentStore : currentUser;
-  const input = prompt("Montant TTC de la vente accessoire (€) :", "0");
-  if(input === null) return;
-  const montant = parseFloat(input.replace(",", "."));
-  if(isNaN(montant) || montant <= 0){ alert("Montant invalide."); return; }
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
-    const data = snap.data();
-    const cAP = data.accessoirePersonal || {};
-    const cAW = data.accessoireWeekly   || {};
-    transaction.set(ref, {
-      accessoirePersonal: { ...cAP, [store]: (cAP[store]||0) + montant },
-      accessoireWeekly:   { ...cAW, [store]: (cAW[store]||0) + montant }
-    }, { merge:true });
+  showAmountModal("Valider accessoire", "Montant TTC de la vente (€) :", async (montant) => {
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if(!snap.exists()) return;
+      const data = snap.data();
+      const cAP = data.accessoirePersonal || {};
+      const cAW = data.accessoireWeekly   || {};
+      transaction.set(ref, {
+        accessoirePersonal: { ...cAP, [store]: (cAP[store]||0) + montant },
+        accessoireWeekly:   { ...cAW, [store]: (cAW[store]||0) + montant }
+      }, { merge:true });
+    });
   });
 };
 
 window.cancelAccessoire = async function(){
   const store = isManager() ? currentStore : currentUser;
-  const input = prompt("Montant TTC à annuler (€) :", "0");
-  if(input === null) return;
-  const montant = parseFloat(input.replace(",", "."));
-  if(isNaN(montant) || montant <= 0){ alert("Montant invalide."); return; }
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
-    const data = snap.data();
-    const cAP = data.accessoirePersonal || {};
-    const cAW = data.accessoireWeekly   || {};
-    transaction.set(ref, {
-      accessoirePersonal: { ...cAP, [store]: Math.max((cAP[store]||0) - montant, 0) },
-      accessoireWeekly:   { ...cAW, [store]: Math.max((cAW[store]||0) - montant, 0) }
-    }, { merge:true });
+  showAmountModal("Annuler accessoire", "Montant TTC à annuler (€) :", async (montant) => {
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if(!snap.exists()) return;
+      const data = snap.data();
+      const cAP = data.accessoirePersonal || {};
+      const cAW = data.accessoireWeekly   || {};
+      transaction.set(ref, {
+        accessoirePersonal: { ...cAP, [store]: Math.max((cAP[store]||0) - montant, 0) },
+        accessoireWeekly:   { ...cAW, [store]: Math.max((cAW[store]||0) - montant, 0) }
+      }, { merge:true });
+    });
   });
 };
 
@@ -2067,19 +2085,16 @@ window.utiliserCercle = async function(type){
 
 window.catchUpAccessoire = async function(){
   const store = isManager() ? currentStore : currentUser;
-  const input = prompt("Montant TTC à rattraper sur la semaine (€) :", "0");
-  if(input === null) return;
-  const montant = parseFloat(input.replace(",", "."));
-  if(isNaN(montant) || montant <= 0){ alert("Montant invalide."); return; }
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
-    const data = snap.data();
-    const cAW = data.accessoireWeekly || {};
-    transaction.set(ref, {
-      accessoireWeekly: { ...cAW, [store]: (cAW[store]||0) + montant }
-    }, { merge:true });
+  showAmountModal("Rattraper accessoire", "Montant TTC à rattraper (€) :", async (montant) => {
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if(!snap.exists()) return;
+      const data = snap.data();
+      const cAW = data.accessoireWeekly || {};
+      transaction.set(ref, {
+        accessoireWeekly: { ...cAW, [store]: (cAW[store]||0) + montant }
+      }, { merge:true });
+    });
   });
 };
 
@@ -2168,10 +2183,13 @@ function renderAdmin(){
     boutiqueDisplayList.forEach(item => {
       div.innerHTML += `<div>${item} : <input type="number" id="obj-${item}" value="${boutiqueObjectives[item] || 0}"></div>`;
     });
+    div.innerHTML += `<div>Accessoire (€ TTC) : <input type="number" id="obj-accessoire-store" value="${accObjStore}" step="0.01"></div>`;
+
+    /* Boutons KPI juste après Accessoire */
     div.innerHTML += `
-      <div style="margin-top:6px;">
-        💰 Accessoire (€ TTC) :
-        <input type="number" id="obj-accessoire-store" value="${accObjStore}" step="0.01">
+      <div style="margin-top:12px;margin-bottom:4px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="saveObjectives()" style="background:white;color:black;border:none;border-radius:8px;padding:10px 15px;font-weight:600;cursor:pointer;">Valider tous les objectifs</button>
+        <button onclick="resetWeekly()" style="background:#222;color:white;border:none;border-radius:8px;padding:10px 15px;font-weight:600;cursor:pointer;">Réinitialiser les objectifs</button>
       </div>`;
 
     /* 3. Boutons KPI — gérés par le HTML via saveObjectives/resetWeekly */
