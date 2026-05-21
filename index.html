@@ -405,7 +405,6 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
   </div>
 
   <div id="items"></div>
-  <div id="accessoirePanel" style="display:flex;justify-content:center;padding:0 30px 30px 30px;"></div>
 
   <div id="globalSummaryPanel" class="store-panel hidden">
     <div style="font-size:13px;font-weight:700;color:#ff7a00;letter-spacing:1px;margin-bottom:12px;">📊 Semaine DCR Normandie-Centre</div>
@@ -1735,8 +1734,12 @@ window.adminCatchUp = async function(item){
    TUILE ACCESSOIRE
    ===================================================================== */
 function renderAccessoireTile(){
-  const panel = document.getElementById("accessoirePanel");
-  if(!panel) return;
+  /* Supprimer l'ancienne tuile accessoire si elle existe */
+  const existing = document.getElementById("accessoireTile");
+  if(existing) existing.remove();
+
+  const container = document.getElementById("items");
+  if(!container) return;
 
   const sectorStores = isDirector() ? allStoreUsers : getCurrentSectorStores();
 
@@ -1805,12 +1808,14 @@ function renderAccessoireTile(){
       <div class="btn-row">
         <button class="validate" onclick="validateAccessoire()">Valider</button>
         <button class="cancel" onclick="cancelAccessoire()">Annuler</button>
+        <button class="catchup" onclick="catchUpAccessoire()">Rattraper</button>
       </div>`;
   } else if(isAdmin()){
     buttonsHTML = `
       <div class="btn-row">
         <button class="validate" onclick="validateAccessoireAdmin()">Valider</button>
         <button class="cancel" onclick="cancelAccessoireAdmin()">Annuler</button>
+        <button class="catchup" onclick="catchUpAccessoireAdmin()">Rattraper</button>
       </div>`;
   } else if(isStore()){
     buttonsHTML = `
@@ -1818,8 +1823,10 @@ function renderAccessoireTile(){
       <button class="cancel" onclick="cancelAccessoire()">Annuler</button>`;
   }
 
-  panel.innerHTML = `
-    <div class="item ${glowClass}" style="background:${bgColor};width:260px;">
+  const tile = document.createElement("div");
+  tile.id = "accessoireTile";
+  tile.innerHTML = `
+    <div class="item ${glowClass}" style="background:${bgColor};">
       <h3>💰 Accessoire</h3>
       ${diffText ? `<p>${diffText}</p>` : ""}
       ${(isAdmin() || isManager()) ? `
@@ -1837,6 +1844,7 @@ function renderAccessoireTile(){
         </div>` : ""}
       ${buttonsHTML}
     </div>`;
+  container.appendChild(tile);
 }
 
 window.validateAccessoire = async function(){
