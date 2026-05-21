@@ -395,7 +395,7 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
   <div id="adminPanel" class="admin-panel hidden">
     <h3 id="adminTitle">Administration</h3>
     <div id="adminInputs"></div>
-    <div id="adminKpiButtons">
+    <div id="adminKpiButtons" style="display:none;">
       <button onclick="saveObjectives()">Valider tous les objectifs</button>
       <button onclick="resetWeekly()">Réinitialiser les objectifs</button>
     </div>
@@ -977,6 +977,10 @@ window.login = async function(){
     if(isAdmin() || isManager()){
       document.getElementById("adminPanel").classList.remove("hidden");
       document.getElementById("rankingPanel").classList.remove("hidden");
+    }
+
+    if(isAdmin()){
+      document.getElementById("adminKpiButtons").style.display = "block";
     }
 
     if(isStore() && sectors["secteur2"].stores.includes(currentUser)){
