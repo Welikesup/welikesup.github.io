@@ -1365,8 +1365,7 @@ function renderDirector(){
             ${detailHTML}
             ${leaderHTML}
             <div style="margin-top:6px;font-size:12px;font-weight:700;">
-              Total : ${todayTotal}${sectorInitial > 0 ? ` / ${sectorInitial}` : ""}
-              &nbsp;•&nbsp; Semaine : ${weeklyTotal}
+              Aujourd'hui : ${todayTotal} &nbsp;•&nbsp; Semaine : ${weeklyTotal}${sectorInitial > 0 ? `/${sectorInitial}` : ""}
             </div>
             ${sectorInitial > 0 ? `
             <div style="font-size:11px;opacity:0.85;margin-bottom:4px;">${objectifText}</div>
