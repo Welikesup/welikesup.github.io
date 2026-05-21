@@ -395,8 +395,10 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
   <div id="adminPanel" class="admin-panel hidden">
     <h3 id="adminTitle">Administration</h3>
     <div id="adminInputs"></div>
-    <button onclick="saveObjectives()">Valider tous les objectifs</button>
-    <button onclick="resetWeekly()">Réinitialiser les objectifs</button>
+    <div id="adminKpiButtons">
+      <button onclick="saveObjectives()">Valider tous les objectifs</button>
+      <button onclick="resetWeekly()">Réinitialiser les objectifs</button>
+    </div>
   </div>
 
   <div id="rankingPanel" class="ranking-panel hidden">
@@ -405,6 +407,23 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
   </div>
 
   <div id="items"></div>
+
+  <!-- Modal sélection boutique -->
+  <div id="storeModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;">
+    <div style="background:#1c1c1c;border-radius:16px;padding:24px;min-width:280px;max-width:340px;width:90%;">
+      <h3 id="storeModalTitle" style="margin:0 0 16px 0;color:#ff7a00;font-size:16px;"></h3>
+      <div id="storeModalList" style="margin-bottom:16px;"></div>
+      <div id="storeModalQtyBlock" style="display:none;margin-bottom:16px;">
+        <label style="font-size:13px;color:white;">Quantité / Montant :</label>
+        <input type="number" id="storeModalQty" value="1" min="0" step="any"
+          style="width:100%;margin-top:6px;padding:8px;border-radius:8px;border:none;text-align:center;font-size:16px;">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="storeModalConfirm()" style="flex:1;background:#ff7a00;color:white;border:none;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;">Valider</button>
+        <button onclick="storeModalClose()" style="flex:1;background:#333;color:white;border:none;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;">Annuler</button>
+      </div>
+    </div>
+  </div>
 
   <div id="globalSummaryPanel" class="store-panel hidden">
     <div style="font-size:13px;font-weight:700;color:#ff7a00;letter-spacing:1px;margin-bottom:12px;">📊 Semaine DCR Normandie-Centre</div>
@@ -1637,96 +1656,135 @@ window.catchUpSale = async function(item){
 };
 
 /* =====================================================================
+   MODAL SÉLECTION BOUTIQUE
+   ===================================================================== */
+let _modalCallback = null;
+
+function showStoreModal(title, stores, withQty, qtyLabel, callback){
+  _modalCallback = callback;
+  document.getElementById("storeModalTitle").textContent = title;
+
+  const list = document.getElementById("storeModalList");
+  list.innerHTML = stores.map(s => `
+    <label style="display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;font-size:14px;color:white;">
+      <input type="radio" name="storeModalRadio" value="${s}"
+        style="width:18px;height:18px;accent-color:#ff7a00;">
+      ${s}
+    </label>`).join("");
+
+  /* Présélectionner le premier */
+  const first = list.querySelector("input[type=radio]");
+  if(first) first.checked = true;
+
+  const qtyBlock = document.getElementById("storeModalQtyBlock");
+  if(withQty){
+    qtyBlock.style.display = "block";
+    qtyBlock.querySelector("label").textContent = qtyLabel || "Quantité :";
+    document.getElementById("storeModalQty").value = withQty === "money" ? "0" : "1";
+    document.getElementById("storeModalQty").step = withQty === "money" ? "0.01" : "1";
+  } else {
+    qtyBlock.style.display = "none";
+  }
+
+  const modal = document.getElementById("storeModal");
+  modal.style.display = "flex";
+}
+
+window.storeModalConfirm = function(){
+  const selected = document.querySelector("input[name=storeModalRadio]:checked");
+  if(!selected){ alert("Sélectionne une boutique."); return; }
+  const store = selected.value;
+  const qtyBlock = document.getElementById("storeModalQtyBlock");
+  let qty = null;
+  if(qtyBlock.style.display !== "none"){
+    qty = parseFloat(document.getElementById("storeModalQty").value.replace(",","."));
+    if(isNaN(qty) || qty <= 0){ alert("Valeur invalide."); return; }
+  }
+  storeModalClose();
+  if(_modalCallback) _modalCallback(store, qty);
+};
+
+window.storeModalClose = function(){
+  document.getElementById("storeModal").style.display = "none";
+  _modalCallback = null;
+};
+
+/* =====================================================================
    FONCTIONS ADMIN — Valider / Annuler / Rattraper pour une boutique choisie
    ===================================================================== */
-function askAdminStore(){
-  const stores = getCurrentSectorStores();
-  const storeList = stores.map((s, i) => `${i+1}. ${s}`).join("\n");
-  const input = prompt(`Pour quelle boutique ?\n${storeList}`, "1");
-  if(input === null) return null;
-  const idx = parseInt(input) - 1;
-  if(isNaN(idx) || idx < 0 || idx >= stores.length){ alert("Boutique invalide."); return null; }
-  return stores[idx];
-}
+function askAdminStore(){ /* conservé pour compatibilité mais non utilisé */ }
 
 window.adminDecrement = async function(item){
   if(!isAdmin()) return;
-  const targetStore = askAdminStore();
-  if(!targetStore) return;
-  if(!confirm(`Confirmer une vente ${item} pour ${targetStore} ?`)) return;
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
-    const data = snap.data();
-    const cP = data.personal || {}, cWP = data.weeklyPersonal || {};
-    const cST = data.sectorTotals || {}, cWST = data.weeklySectorTotals || {};
-    const cBP = data.boutiqueProgress || {};
-    const payload = {
-      personal:           { ...cP,   [targetStore]:   { ...(cP[targetStore]||{}),   [item]: (cP[targetStore]?.[item]||0)+1 } },
-      weeklyPersonal:     { ...cWP,  [targetStore]:   { ...(cWP[targetStore]||{}),  [item]: (cWP[targetStore]?.[item]||0)+1 } },
-      sectorTotals:       { ...cST,  [currentSector]: { ...(cST[currentSector]||{}), [item]: (cST[currentSector]?.[item]||0)+1 } },
-      weeklySectorTotals: { ...cWST, [currentSector]: { ...(cWST[currentSector]||{}), [item]: (cWST[currentSector]?.[item]||0)+1 } }
-    };
-    if(managerItemsList.includes(item)){
-      const bpm = cBP[targetStore] || {};
-      payload.boutiqueProgress = { ...cBP, [targetStore]: { ...bpm, [item]: (bpm[item]||0)+1 } };
-    }
-    transaction.set(ref, payload, { merge:true });
+  showStoreModal(`Valider une vente — ${item}`, getCurrentSectorStores(), false, null, async (store) => {
+    if(!confirm(`Confirmer une vente ${item} pour ${store} ?`)) return;
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if(!snap.exists()) return;
+      const data = snap.data();
+      const cP = data.personal||{}, cWP = data.weeklyPersonal||{};
+      const cST = data.sectorTotals||{}, cWST = data.weeklySectorTotals||{};
+      const cBP = data.boutiqueProgress||{};
+      const payload = {
+        personal:           { ...cP,   [store]:         { ...(cP[store]||{}),           [item]: (cP[store]?.[item]||0)+1 } },
+        weeklyPersonal:     { ...cWP,  [store]:         { ...(cWP[store]||{}),          [item]: (cWP[store]?.[item]||0)+1 } },
+        sectorTotals:       { ...cST,  [currentSector]: { ...(cST[currentSector]||{}),  [item]: (cST[currentSector]?.[item]||0)+1 } },
+        weeklySectorTotals: { ...cWST, [currentSector]: { ...(cWST[currentSector]||{}), [item]: (cWST[currentSector]?.[item]||0)+1 } }
+      };
+      if(managerItemsList.includes(item)){
+        const bpm = cBP[store]||{};
+        payload.boutiqueProgress = { ...cBP, [store]: { ...bpm, [item]: (bpm[item]||0)+1 } };
+      }
+      transaction.set(ref, payload, { merge:true });
+    });
   });
 };
 
 window.adminCancel = async function(item){
   if(!isAdmin()) return;
-  const targetStore = askAdminStore();
-  if(!targetStore) return;
-  if(!confirm(`Annuler une vente ${item} pour ${targetStore} ?`)) return;
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
-    const data = snap.data();
-    const cP = data.personal || {}, cWP = data.weeklyPersonal || {};
-    const cST = data.sectorTotals || {}, cWST = data.weeklySectorTotals || {};
-    const cBP = data.boutiqueProgress || {};
-    const payload = {
-      personal:           { ...cP,   [targetStore]:   { ...(cP[targetStore]||{}),   [item]: Math.max((cP[targetStore]?.[item]||0)-1,0) } },
-      weeklyPersonal:     { ...cWP,  [targetStore]:   { ...(cWP[targetStore]||{}),  [item]: Math.max((cWP[targetStore]?.[item]||0)-1,0) } },
-      sectorTotals:       { ...cST,  [currentSector]: { ...(cST[currentSector]||{}), [item]: Math.max((cST[currentSector]?.[item]||0)-1,0) } },
-      weeklySectorTotals: { ...cWST, [currentSector]: { ...(cWST[currentSector]||{}), [item]: Math.max((cWST[currentSector]?.[item]||0)-1,0) } }
-    };
-    if(managerItemsList.includes(item)){
-      const bpm = cBP[targetStore] || {};
-      payload.boutiqueProgress = { ...cBP, [targetStore]: { ...bpm, [item]: Math.max((bpm[item]||0)-1,0) } };
-    }
-    transaction.set(ref, payload, { merge:true });
+  showStoreModal(`Annuler une vente — ${item}`, getCurrentSectorStores(), false, null, async (store) => {
+    if(!confirm(`Annuler une vente ${item} pour ${store} ?`)) return;
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if(!snap.exists()) return;
+      const data = snap.data();
+      const cP = data.personal||{}, cWP = data.weeklyPersonal||{};
+      const cST = data.sectorTotals||{}, cWST = data.weeklySectorTotals||{};
+      const cBP = data.boutiqueProgress||{};
+      const payload = {
+        personal:           { ...cP,   [store]:         { ...(cP[store]||{}),           [item]: Math.max((cP[store]?.[item]||0)-1,0) } },
+        weeklyPersonal:     { ...cWP,  [store]:         { ...(cWP[store]||{}),          [item]: Math.max((cWP[store]?.[item]||0)-1,0) } },
+        sectorTotals:       { ...cST,  [currentSector]: { ...(cST[currentSector]||{}),  [item]: Math.max((cST[currentSector]?.[item]||0)-1,0) } },
+        weeklySectorTotals: { ...cWST, [currentSector]: { ...(cWST[currentSector]||{}), [item]: Math.max((cWST[currentSector]?.[item]||0)-1,0) } }
+      };
+      if(managerItemsList.includes(item)){
+        const bpm = cBP[store]||{};
+        payload.boutiqueProgress = { ...cBP, [store]: { ...bpm, [item]: Math.max((bpm[item]||0)-1,0) } };
+      }
+      transaction.set(ref, payload, { merge:true });
+    });
   });
 };
 
 window.adminCatchUp = async function(item){
   if(!isAdmin()) return;
-  const targetStore = askAdminStore();
-  if(!targetStore) return;
-  const input = prompt(`Combien de placements à rattraper pour ${item} — ${targetStore} ?`, "1");
-  if(input === null) return;
-  const qty = parseInt(input);
-  if(isNaN(qty) || qty <= 0){ alert("Veuillez saisir un nombre valide."); return; }
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
-    const data = snap.data();
-    const cWP = data.weeklyPersonal || {}, cWST = data.weeklySectorTotals || {};
-    const cBP = data.boutiqueProgress || {};
-    const payload = {
-      weeklyPersonal:     { ...cWP,  [targetStore]:   { ...(cWP[targetStore]||{}),   [item]: (cWP[targetStore]?.[item]||0)+qty } },
-      weeklySectorTotals: { ...cWST, [currentSector]: { ...(cWST[currentSector]||{}), [item]: (cWST[currentSector]?.[item]||0)+qty } }
-    };
-    if(managerItemsList.includes(item)){
-      const bpm = cBP[targetStore] || {};
-      payload.boutiqueProgress = { ...cBP, [targetStore]: { ...bpm, [item]: (bpm[item]||0)+qty } };
-    }
-    transaction.set(ref, payload, { merge:true });
+  showStoreModal(`Rattraper — ${item}`, getCurrentSectorStores(), "number", "Nombre de placements à rattraper :", async (store, qty) => {
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if(!snap.exists()) return;
+      const data = snap.data();
+      const cWP = data.weeklyPersonal||{}, cWST = data.weeklySectorTotals||{};
+      const cBP = data.boutiqueProgress||{};
+      const payload = {
+        weeklyPersonal:     { ...cWP,  [store]:         { ...(cWP[store]||{}),          [item]: (cWP[store]?.[item]||0)+qty } },
+        weeklySectorTotals: { ...cWST, [currentSector]: { ...(cWST[currentSector]||{}), [item]: (cWST[currentSector]?.[item]||0)+qty } }
+      };
+      if(managerItemsList.includes(item)){
+        const bpm = cBP[store]||{};
+        payload.boutiqueProgress = { ...cBP, [store]: { ...bpm, [item]: (bpm[item]||0)+qty } };
+      }
+      transaction.set(ref, payload, { merge:true });
+    });
   });
 };
 
@@ -1889,57 +1947,33 @@ window.cancelAccessoire = async function(){
 
 window.validateAccessoireAdmin = async function(){
   if(!isAdmin()) return;
-  const stores = getCurrentSectorStores();
-  const storeList = stores.map((s,i) => `${i+1}. ${s}`).join("\n");
-  const storeInput = prompt(`Pour quelle boutique ?\n${storeList}`, "1");
-  if(storeInput === null) return;
-  const idx = parseInt(storeInput) - 1;
-  if(isNaN(idx) || idx < 0 || idx >= stores.length){ alert("Boutique invalide."); return; }
-  const targetStore = stores[idx];
-
-  const input = prompt(`Montant TTC accessoire pour ${targetStore} (€) :`, "0");
-  if(input === null) return;
-  const montant = parseFloat(input.replace(",", "."));
-  if(isNaN(montant) || montant <= 0){ alert("Montant invalide."); return; }
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
-    const data = snap.data();
-    const cAP = data.accessoirePersonal || {};
-    const cAW = data.accessoireWeekly   || {};
-    transaction.set(ref, {
-      accessoirePersonal: { ...cAP, [targetStore]: (cAP[targetStore]||0) + montant },
-      accessoireWeekly:   { ...cAW, [targetStore]: (cAW[targetStore]||0) + montant }
-    }, { merge:true });
+  showStoreModal("Valider accessoire", getCurrentSectorStores(), "money", "Montant TTC (€) :", async (store, montant) => {
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if(!snap.exists()) return;
+      const data = snap.data();
+      const cAP = data.accessoirePersonal||{}, cAW = data.accessoireWeekly||{};
+      transaction.set(ref, {
+        accessoirePersonal: { ...cAP, [store]: (cAP[store]||0)+montant },
+        accessoireWeekly:   { ...cAW, [store]: (cAW[store]||0)+montant }
+      }, { merge:true });
+    });
   });
 };
 
 window.cancelAccessoireAdmin = async function(){
   if(!isAdmin()) return;
-  const stores = getCurrentSectorStores();
-  const storeList = stores.map((s,i) => `${i+1}. ${s}`).join("\n");
-  const storeInput = prompt(`Pour quelle boutique ?\n${storeList}`, "1");
-  if(storeInput === null) return;
-  const idx = parseInt(storeInput) - 1;
-  if(isNaN(idx) || idx < 0 || idx >= stores.length){ alert("Boutique invalide."); return; }
-  const targetStore = stores[idx];
-
-  const input = prompt(`Montant TTC à annuler pour ${targetStore} (€) :`, "0");
-  if(input === null) return;
-  const montant = parseFloat(input.replace(",", "."));
-  if(isNaN(montant) || montant <= 0){ alert("Montant invalide."); return; }
-
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(ref);
-    if(!snap.exists()) return;
-    const data = snap.data();
-    const cAP = data.accessoirePersonal || {};
-    const cAW = data.accessoireWeekly   || {};
-    transaction.set(ref, {
-      accessoirePersonal: { ...cAP, [targetStore]: Math.max((cAP[targetStore]||0) - montant, 0) },
-      accessoireWeekly:   { ...cAW, [targetStore]: Math.max((cAW[targetStore]||0) - montant, 0) }
-    }, { merge:true });
+  showStoreModal("Annuler accessoire", getCurrentSectorStores(), "money", "Montant TTC à annuler (€) :", async (store, montant) => {
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if(!snap.exists()) return;
+      const data = snap.data();
+      const cAP = data.accessoirePersonal||{}, cAW = data.accessoireWeekly||{};
+      transaction.set(ref, {
+        accessoirePersonal: { ...cAP, [store]: Math.max((cAP[store]||0)-montant,0) },
+        accessoireWeekly:   { ...cAW, [store]: Math.max((cAW[store]||0)-montant,0) }
+      }, { merge:true });
+    });
   });
 };
 
@@ -2031,32 +2065,70 @@ window.utiliserCercle = async function(type){
   });
 };
 
+window.catchUpAccessoire = async function(){
+  const store = isManager() ? currentStore : currentUser;
+  const input = prompt("Montant TTC à rattraper sur la semaine (€) :", "0");
+  if(input === null) return;
+  const montant = parseFloat(input.replace(",", "."));
+  if(isNaN(montant) || montant <= 0){ alert("Montant invalide."); return; }
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+    const data = snap.data();
+    const cAW = data.accessoireWeekly || {};
+    transaction.set(ref, {
+      accessoireWeekly: { ...cAW, [store]: (cAW[store]||0) + montant }
+    }, { merge:true });
+  });
+};
+
+window.catchUpAccessoireAdmin = async function(){
+  if(!isAdmin()) return;
+  showStoreModal("Rattraper accessoire", getCurrentSectorStores(), "money", "Montant TTC à rattraper (€) :", async (store, montant) => {
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      if(!snap.exists()) return;
+      const data = snap.data();
+      const cAW = data.accessoireWeekly||{};
+      transaction.set(ref, {
+        accessoireWeekly: { ...cAW, [store]: (cAW[store]||0)+montant }
+      }, { merge:true });
+    });
+  });
+};
+
 window.saveCercleStock = async function(){
   if(!isManager()) return;
   if(!confirm("Valider le stock Code Cercle ?")) return;
-
   const cCS = structuredClone(globalData.cercleStock || {});
   if(!cCS[currentStore]) cCS[currentStore] = {};
-
   cercleTypes.forEach(t => {
     const key = t.replace(/ /g, '_');
     const val = parseInt(document.getElementById("cercle-" + key)?.value) || 0;
     const existing = cCS[currentStore][t] || { initial:0, restant:0 };
-    /* Si on augmente le stock, on ajoute la différence au restant */
     const diff = val - (existing.initial || 0);
-    cCS[currentStore][t] = {
-      initial: val,
-      restant: Math.max((existing.restant || 0) + diff, 0)
-    };
+    cCS[currentStore][t] = { initial: val, restant: Math.max((existing.restant||0)+diff, 0) };
   });
-
   await setDoc(ref, { cercleStock: cCS }, { merge:true });
 };
+
+window.resetCercleStock = async function(){
+  if(!isManager()) return;
+  if(!confirm("Réinitialiser le stock Code Cercle ?")) return;
+  const cCS = structuredClone(globalData.cercleStock || {});
+  if(!cCS[currentStore]) cCS[currentStore] = {};
+  cercleTypes.forEach(t => { cCS[currentStore][t] = { initial:0, restant:0 }; });
+  await setDoc(ref, { cercleStock: cCS }, { merge:true });
+};
+
+/* =====================================================================
+   RENDER ADMIN
+   ===================================================================== */
 function renderAdmin(){
   const div   = document.getElementById("adminInputs");
   const title = document.getElementById("adminTitle");
 
-  /* Ne pas re-rendre si un input est en cours de saisie */
   const activeEl = document.activeElement;
   if(activeEl && activeEl.closest && activeEl.closest("#adminInputs")) return;
 
@@ -2067,11 +2139,7 @@ function renderAdmin(){
     const sectorInitial = globalData.sectorInitial?.[currentSector] || {};
     const accObjSector  = globalData.accessoireObjective?.sector?.[currentSector] || 0;
     boutiqueDisplayList.forEach(item => {
-      div.innerHTML += `
-        <div>
-          ${item} :
-          <input type="number" id="obj-${item}" value="${sectorInitial[item] || 0}">
-        </div>`;
+      div.innerHTML += `<div>${item} : <input type="number" id="obj-${item}" value="${sectorInitial[item] || 0}"></div>`;
     });
     div.innerHTML += `
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid #444;">
@@ -2083,38 +2151,48 @@ function renderAdmin(){
 
   if(isManager()){
     title.textContent = `Administration boutique — ${currentStore}`;
-    const boutiqueObjectives = globalData.boutiqueObjectives?.[currentStore] || {};
+    const boutiqueObjectives    = globalData.boutiqueObjectives?.[currentStore] || {};
     const currentDailyObjective = globalData.dailyObjective?.[currentStore] || 0;
+    const accObjStore           = globalData.accessoireObjective?.store?.[currentStore] || 0;
 
+    /* 1. Objectif journalier */
     div.innerHTML += `
-      <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #444;">
+      <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #444;">
         🎯 Objectif journalier (total placements) :
         <input type="number" id="obj-daily" value="${currentDailyObjective}">
         <br>
         <button onclick="saveDailyObjective()" style="background:#ffd700;color:#000;margin-top:8px;">Valider objectif journalier</button>
       </div>`;
 
+    /* 2. KPI + Accessoire */
     boutiqueDisplayList.forEach(item => {
-      div.innerHTML += `
-        <div>
-          ${item} :
-          <input type="number" id="obj-${item}" value="${boutiqueObjectives[item] || 0}">
-        </div>`;
+      div.innerHTML += `<div>${item} : <input type="number" id="obj-${item}" value="${boutiqueObjectives[item] || 0}"></div>`;
     });
-
-    const accObjStore = globalData.accessoireObjective?.store?.[currentStore] || 0;
     div.innerHTML += `
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #444;">
-        💰 Objectif Accessoire (€ TTC boutique) :
+      <div style="margin-top:6px;">
+        💰 Accessoire (€ TTC) :
         <input type="number" id="obj-accessoire-store" value="${accObjStore}" step="0.01">
-      </div>
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #444;">
-        <div style="font-weight:700;margin-bottom:8px;">🔵 Stock Code Cercle</div>
-        ${cercleTypes.map(t => {
-          const stock = globalData.cercleStock?.[currentStore]?.[t] || { initial:0, restant:0 };
-          return `<div style="margin-bottom:4px;">${t} : <input type="number" id="cercle-${t.replace(/ /g,'_')}" value="${stock.initial}" style="width:70px;"> (restant : ${stock.restant})</div>`;
-        }).join("")}
-        <button onclick="saveCercleStock()" style="background:#3a9ad9;color:white;margin-top:8px;">Valider stock Code Cercle</button>
+      </div>`;
+
+    /* 3. Boutons KPI — gérés par le HTML via saveObjectives/resetWeekly */
+
+    /* 4. Code Cercle */
+    const cercleRows = cercleTypes.map(t => {
+      const stock = globalData.cercleStock?.[currentStore]?.[t] || { initial:0, restant:0 };
+      const key = t.replace(/ /g, '_');
+      return '<div style="margin-bottom:4px;">' + t + ' : '
+        + '<input type="number" id="cercle-' + key + '" value="' + stock.initial + '" style="width:70px;"> '
+        + '<span style="opacity:0.7;font-size:12px;"> restant : ' + stock.restant + '</span></div>';
+    }).join("");
+
+    div.innerHTML += `
+      <div style="margin-top:16px;padding-top:12px;border-top:2px solid #3a9ad9;">
+        <div style="font-weight:700;margin-bottom:8px;color:#3a9ad9;">🔵 Stock Code Cercle</div>
+        ${cercleRows}
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="saveCercleStock()" style="background:#3a9ad9;color:white;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;">Valider stock Code Cercle</button>
+          <button onclick="resetCercleStock()" style="background:#555;color:white;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;">Réinitialiser Code Cercle</button>
+        </div>
       </div>`;
   }
 }
