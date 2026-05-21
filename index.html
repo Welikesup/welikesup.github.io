@@ -405,6 +405,7 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
   </div>
 
   <div id="items"></div>
+  <div id="accessoirePanel" style="display:flex;justify-content:center;padding:0 30px 30px 30px;"></div>
 
   <div id="globalSummaryPanel" class="store-panel hidden">
     <div style="font-size:13px;font-weight:700;color:#ff7a00;letter-spacing:1px;margin-bottom:12px;">📊 Semaine DCR Normandie-Centre</div>
@@ -418,6 +419,11 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
   <div id="storeTrackingPanel" class="store-panel hidden">
     <h3 id="storeTrackingTitle">Suivi boutique</h3>
     <div id="storeTrackingContent" class="store-progress-list"></div>
+  </div>
+
+  <div id="cerclePanel" class="store-panel hidden">
+    <h3>🔵 Code Cercle</h3>
+    <div id="cercleContent" style="display:flex;flex-wrap:wrap;gap:12px;"></div>
   </div>
 
   <div id="directorPanel" class="hidden">
@@ -587,7 +593,7 @@ function getCurrentSectorStores(){
 
 /* Pour les tuiles : admin secteur voit ses boutiques, manager voit la sienne */
 function hasTileOverview(){
-  return isAdmin() || isManager();
+  return isAdmin() || isManager() || (isStore() && sectors["secteur2"].stores.includes(currentUser));
 }
 
 /* =====================================================================
@@ -669,6 +675,42 @@ function buildEmptyDailyObjective(){
   return m;
 }
 
+/* Accessoire : montants TTC par boutique */
+function buildEmptyAccessoirePersonal(){
+  const m = {};
+  allStoreUsers.forEach(store => m[store] = 0);
+  return m;
+}
+
+function buildEmptyAccessoireWeekly(){
+  const m = {};
+  allStoreUsers.forEach(store => m[store] = 0);
+  return m;
+}
+
+function buildEmptyAccessoireObjective(){
+  /* Par secteur pour admin, par boutique pour manager */
+  return {
+    sector: { secteur1: 0, secteur2: 0 },
+    store: Object.fromEntries(allStoreUsers.map(s => [s, 0]))
+  };
+}
+
+/* =====================================================================
+   CODE CERCLE
+   ===================================================================== */
+const cercleTypes = ["Broadband","Forfait 120Go","Forfait 120Go Open","Forfait 200Go","Forfait 80Go"];
+const CERCLE_SEUIL_ORANGE = 0.20;
+
+function buildEmptyCercleStock(){
+  const m = {};
+  allStoreUsers.forEach(store => {
+    m[store] = {};
+    cercleTypes.forEach(t => m[store][t] = { initial: 0, restant: 0 });
+  });
+  return m;
+}
+
 /* =====================================================================
    COMPUTE SECTOR TOTALS FROM PERSONAL
    ===================================================================== */
@@ -713,6 +755,10 @@ async function ensureDataStructure(){
         boutiqueInitial:     buildEmptyManagerStoreMap(),
         boutiqueProgress:    buildEmptyManagerStoreMap(),
         dailyObjective:      buildEmptyDailyObjective(),
+        accessoirePersonal:  buildEmptyAccessoirePersonal(),
+        accessoireWeekly:    buildEmptyAccessoireWeekly(),
+        accessoireObjective: buildEmptyAccessoireObjective(),
+        cercleStock:         buildEmptyCercleStock(),
         lastPersonalReset:   getToday()
       };
       transaction.set(ref, data);
@@ -832,6 +878,37 @@ async function ensureDataStructure(){
       needsPatch = true;
     }
 
+    /* accessoire */
+    const safeAP = data.accessoirePersonal || {};
+    const safeAW = data.accessoireWeekly   || {};
+    const safeAO = data.accessoireObjective || { sector:{secteur1:0,secteur2:0}, store:{} };
+    let pAP = { ...safeAP }, pAW = { ...safeAW };
+    let aChanged = false;
+    allStoreUsers.forEach(store => {
+      if(typeof pAP[store] !== "number"){ pAP[store] = 0; aChanged = true; }
+      if(typeof pAW[store] !== "number"){ pAW[store] = 0; aChanged = true; }
+    });
+    if(aChanged){
+      patch.accessoirePersonal = pAP;
+      patch.accessoireWeekly   = pAW;
+      needsPatch = true;
+    }
+
+    /* cercleStock */
+    const safeCS = data.cercleStock || {};
+    let pCS = structuredClone(safeCS);
+    let csChanged = false;
+    allStoreUsers.forEach(store => {
+      if(!pCS[store]){ pCS[store] = {}; csChanged = true; }
+      cercleTypes.forEach(t => {
+        if(!pCS[store][t] || typeof pCS[store][t].initial !== "number"){
+          pCS[store][t] = { initial: 0, restant: 0 };
+          csChanged = true;
+        }
+      });
+    });
+    if(csChanged){ patch.cercleStock = pCS; needsPatch = true; }
+
     if(needsPatch) transaction.set(ref, patch, { merge:true });
   });
 }
@@ -848,6 +925,7 @@ async function resetDailyPersonalIfNeeded(){
     if(data.lastPersonalReset === today) return;
     transaction.set(ref, {
       personal: buildEmptyPersonal(),
+      accessoirePersonal: buildEmptyAccessoirePersonal(),
       lastPersonalReset: today
     }, { merge:true });
   });
@@ -880,6 +958,10 @@ window.login = async function(){
 
     if(isAdmin() || isManager()){
       document.getElementById("adminPanel").classList.remove("hidden");
+      document.getElementById("rankingPanel").classList.remove("hidden");
+    }
+
+    if(isStore() && sectors["secteur2"].stores.includes(currentUser)){
       document.getElementById("rankingPanel").classList.remove("hidden");
     }
 
@@ -916,14 +998,20 @@ async function initData(){
 
     if(isDirector()){
       renderDirector();
+      renderAccessoireTile();
+      renderCercle();
     } else {
       display();
       if(isAdmin() || isManager()){
         if(!adminRendered){ renderAdmin(); adminRendered = true; }
         renderRanking();
       }
+      if(isStore() && sectors["secteur2"].stores.includes(currentUser)){
+        renderRanking();
+      }
       if(isAdmin()){ renderGlobalSummary(); }
       if(isStore() || isManager()){ renderStoreTracking(); renderTx(); }
+      renderCercle();
     }
   });
 
@@ -1035,7 +1123,7 @@ function display(){
     }
 
     const cancelAllowed = isManager() ? true : !!(cancelTimers[item] && Date.now() < cancelTimers[item]);
-    const canSell = !isAdmin();
+    const canSell = !isDirector();
 
     const div = document.createElement("div");
     div.className = "item";
@@ -1096,6 +1184,13 @@ function display(){
             <button class="cancel" ${!cancelAllowed?"disabled":""} onclick="cancelSale('${item}')">Annuler</button>
             <button class="catchup" onclick="catchUpSale('${item}')">Rattraper</button>
           </div>`;
+      } else if(isAdmin()){
+        buttonsHTML = `
+          <div class="btn-row">
+            <button class="validate" onclick="adminDecrement('${item}')">Valider</button>
+            <button class="cancel" onclick="adminCancel('${item}')">Annuler</button>
+            <button class="catchup" onclick="adminCatchUp('${item}')">Rattraper</button>
+          </div>`;
       } else {
         buttonsHTML = `
           <button class="validate" onclick="decrement('${item}')">Valider une vente</button>
@@ -1119,6 +1214,9 @@ function display(){
   });
 
   previousLeaderKeys = nextLeaderKeys;
+
+  /* Tuile Accessoire */
+  renderAccessoireTile();
 }
 
 /* =====================================================================
@@ -1540,8 +1638,412 @@ window.catchUpSale = async function(item){
 };
 
 /* =====================================================================
-   RENDER ADMIN
+   FONCTIONS ADMIN — Valider / Annuler / Rattraper pour une boutique choisie
    ===================================================================== */
+function askAdminStore(){
+  const stores = getCurrentSectorStores();
+  const storeList = stores.map((s, i) => `${i+1}. ${s}`).join("\n");
+  const input = prompt(`Pour quelle boutique ?\n${storeList}`, "1");
+  if(input === null) return null;
+  const idx = parseInt(input) - 1;
+  if(isNaN(idx) || idx < 0 || idx >= stores.length){ alert("Boutique invalide."); return null; }
+  return stores[idx];
+}
+
+window.adminDecrement = async function(item){
+  if(!isAdmin()) return;
+  const targetStore = askAdminStore();
+  if(!targetStore) return;
+  if(!confirm(`Confirmer une vente ${item} pour ${targetStore} ?`)) return;
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+    const data = snap.data();
+    const cP = data.personal || {}, cWP = data.weeklyPersonal || {};
+    const cST = data.sectorTotals || {}, cWST = data.weeklySectorTotals || {};
+    const cBP = data.boutiqueProgress || {};
+    const payload = {
+      personal:           { ...cP,   [targetStore]:   { ...(cP[targetStore]||{}),   [item]: (cP[targetStore]?.[item]||0)+1 } },
+      weeklyPersonal:     { ...cWP,  [targetStore]:   { ...(cWP[targetStore]||{}),  [item]: (cWP[targetStore]?.[item]||0)+1 } },
+      sectorTotals:       { ...cST,  [currentSector]: { ...(cST[currentSector]||{}), [item]: (cST[currentSector]?.[item]||0)+1 } },
+      weeklySectorTotals: { ...cWST, [currentSector]: { ...(cWST[currentSector]||{}), [item]: (cWST[currentSector]?.[item]||0)+1 } }
+    };
+    if(managerItemsList.includes(item)){
+      const bpm = cBP[targetStore] || {};
+      payload.boutiqueProgress = { ...cBP, [targetStore]: { ...bpm, [item]: (bpm[item]||0)+1 } };
+    }
+    transaction.set(ref, payload, { merge:true });
+  });
+};
+
+window.adminCancel = async function(item){
+  if(!isAdmin()) return;
+  const targetStore = askAdminStore();
+  if(!targetStore) return;
+  if(!confirm(`Annuler une vente ${item} pour ${targetStore} ?`)) return;
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+    const data = snap.data();
+    const cP = data.personal || {}, cWP = data.weeklyPersonal || {};
+    const cST = data.sectorTotals || {}, cWST = data.weeklySectorTotals || {};
+    const cBP = data.boutiqueProgress || {};
+    const payload = {
+      personal:           { ...cP,   [targetStore]:   { ...(cP[targetStore]||{}),   [item]: Math.max((cP[targetStore]?.[item]||0)-1,0) } },
+      weeklyPersonal:     { ...cWP,  [targetStore]:   { ...(cWP[targetStore]||{}),  [item]: Math.max((cWP[targetStore]?.[item]||0)-1,0) } },
+      sectorTotals:       { ...cST,  [currentSector]: { ...(cST[currentSector]||{}), [item]: Math.max((cST[currentSector]?.[item]||0)-1,0) } },
+      weeklySectorTotals: { ...cWST, [currentSector]: { ...(cWST[currentSector]||{}), [item]: Math.max((cWST[currentSector]?.[item]||0)-1,0) } }
+    };
+    if(managerItemsList.includes(item)){
+      const bpm = cBP[targetStore] || {};
+      payload.boutiqueProgress = { ...cBP, [targetStore]: { ...bpm, [item]: Math.max((bpm[item]||0)-1,0) } };
+    }
+    transaction.set(ref, payload, { merge:true });
+  });
+};
+
+window.adminCatchUp = async function(item){
+  if(!isAdmin()) return;
+  const targetStore = askAdminStore();
+  if(!targetStore) return;
+  const input = prompt(`Combien de placements à rattraper pour ${item} — ${targetStore} ?`, "1");
+  if(input === null) return;
+  const qty = parseInt(input);
+  if(isNaN(qty) || qty <= 0){ alert("Veuillez saisir un nombre valide."); return; }
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+    const data = snap.data();
+    const cWP = data.weeklyPersonal || {}, cWST = data.weeklySectorTotals || {};
+    const cBP = data.boutiqueProgress || {};
+    const payload = {
+      weeklyPersonal:     { ...cWP,  [targetStore]:   { ...(cWP[targetStore]||{}),   [item]: (cWP[targetStore]?.[item]||0)+qty } },
+      weeklySectorTotals: { ...cWST, [currentSector]: { ...(cWST[currentSector]||{}), [item]: (cWST[currentSector]?.[item]||0)+qty } }
+    };
+    if(managerItemsList.includes(item)){
+      const bpm = cBP[targetStore] || {};
+      payload.boutiqueProgress = { ...cBP, [targetStore]: { ...bpm, [item]: (bpm[item]||0)+qty } };
+    }
+    transaction.set(ref, payload, { merge:true });
+  });
+};
+
+/* =====================================================================
+   TUILE ACCESSOIRE
+   ===================================================================== */
+function renderAccessoireTile(){
+  const panel = document.getElementById("accessoirePanel");
+  if(!panel) return;
+
+  const sectorStores = isDirector() ? allStoreUsers : getCurrentSectorStores();
+
+  /* Totaux jour et semaine */
+  let todayTotal = 0, weeklyTotal = 0;
+  if(isStore()){
+    const store = currentUser;
+    todayTotal  = globalData.accessoirePersonal?.[store] || 0;
+    weeklyTotal = globalData.accessoireWeekly?.[store]   || 0;
+  } else if(isManager()){
+    todayTotal  = globalData.accessoirePersonal?.[currentStore] || 0;
+    weeklyTotal = globalData.accessoireWeekly?.[currentStore]   || 0;
+  } else {
+    /* admin ou director : somme du secteur */
+    const stores = isDirector() ? allStoreUsers : getCurrentSectorStores();
+    stores.forEach(s => {
+      todayTotal  += globalData.accessoirePersonal?.[s] || 0;
+      weeklyTotal += globalData.accessoireWeekly?.[s]   || 0;
+    });
+  }
+
+  /* Objectif */
+  let objective = 0;
+  if(isAdmin()){
+    objective = globalData.accessoireObjective?.sector?.[currentSector] || 0;
+  } else if(isManager()){
+    objective = globalData.accessoireObjective?.store?.[currentStore] || 0;
+  } else if(isDirector()){
+    Object.keys(sectors).forEach(sk => {
+      objective += globalData.accessoireObjective?.sector?.[sk] || 0;
+    });
+  } else {
+    objective = globalData.accessoireObjective?.store?.[currentUser] || 0;
+  }
+
+  const percentText = objective > 0 ? (weeklyTotal / objective) * 100 : 0;
+  const percentBar  = Math.min(percentText, 100);
+
+  let bgColor = "#ff7a00", glowClass = "", percentColor = "#ff7a00";
+  if(percentText >= 120){ bgColor = "#1e7e34"; glowClass = "glow"; percentColor = "#1e7e34"; }
+  else if(percentText >= 100){ bgColor = "#66cc88"; percentColor = "#66cc88"; }
+
+  const fmt = v => v.toLocaleString("fr-FR", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " €";
+
+  const diffText = objective > 0
+    ? (weeklyTotal <= objective
+      ? `Objectif restant : <strong>${fmt(objective - weeklyTotal)}</strong>`
+      : `Objectif dépassé de : <strong>${fmt(weeklyTotal - objective)}</strong>`)
+    : "";
+
+  /* Détail par boutique pour admin/manager/director */
+  let detailHTML = "";
+  if(isAdmin() || isManager() || isDirector()){
+    const stores = isDirector() ? allStoreUsers : getCurrentSectorStores();
+    stores.forEach(s => {
+      if(isManager() && s === currentStore) return;
+      const v = globalData.accessoirePersonal?.[s] || 0;
+      detailHTML += `<div style="font-size:12px;margin-top:2px;line-height:1.15;">${s} : ${fmt(v)}</div>`;
+    });
+  }
+
+  /* Boutons */
+  let buttonsHTML = "";
+  if(isManager()){
+    buttonsHTML = `
+      <div class="btn-row">
+        <button class="validate" onclick="validateAccessoire()">Valider</button>
+        <button class="cancel" onclick="cancelAccessoire()">Annuler</button>
+      </div>`;
+  } else if(isAdmin()){
+    buttonsHTML = `
+      <div class="btn-row">
+        <button class="validate" onclick="validateAccessoireAdmin()">Valider</button>
+        <button class="cancel" onclick="cancelAccessoireAdmin()">Annuler</button>
+      </div>`;
+  } else if(isStore()){
+    buttonsHTML = `
+      <button class="validate" onclick="validateAccessoire()">Valider une vente</button>
+      <button class="cancel" onclick="cancelAccessoire()">Annuler</button>`;
+  }
+
+  panel.innerHTML = `
+    <div class="item ${glowClass}" style="background:${bgColor};width:260px;">
+      <h3>💰 Accessoire</h3>
+      ${diffText ? `<p>${diffText}</p>` : ""}
+      ${(isAdmin() || isManager()) ? `
+        <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
+        <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
+      ` : `
+        <div class="personal-line">Semaine : <strong>${fmt(weeklyTotal)}</strong></div>
+        <div class="personal-line">Aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
+      `}
+      ${detailHTML}
+      ${objective > 0 ? `
+        <div class="progress-container">
+          <div class="progress-bar" style="width:${percentBar}%"></div>
+          <div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
+        </div>` : ""}
+      ${buttonsHTML}
+    </div>`;
+}
+
+window.validateAccessoire = async function(){
+  const store = isManager() ? currentStore : currentUser;
+  const input = prompt("Montant TTC de la vente accessoire (€) :", "0");
+  if(input === null) return;
+  const montant = parseFloat(input.replace(",", "."));
+  if(isNaN(montant) || montant <= 0){ alert("Montant invalide."); return; }
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+    const data = snap.data();
+    const cAP = data.accessoirePersonal || {};
+    const cAW = data.accessoireWeekly   || {};
+    transaction.set(ref, {
+      accessoirePersonal: { ...cAP, [store]: (cAP[store]||0) + montant },
+      accessoireWeekly:   { ...cAW, [store]: (cAW[store]||0) + montant }
+    }, { merge:true });
+  });
+};
+
+window.cancelAccessoire = async function(){
+  const store = isManager() ? currentStore : currentUser;
+  const input = prompt("Montant TTC à annuler (€) :", "0");
+  if(input === null) return;
+  const montant = parseFloat(input.replace(",", "."));
+  if(isNaN(montant) || montant <= 0){ alert("Montant invalide."); return; }
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+    const data = snap.data();
+    const cAP = data.accessoirePersonal || {};
+    const cAW = data.accessoireWeekly   || {};
+    transaction.set(ref, {
+      accessoirePersonal: { ...cAP, [store]: Math.max((cAP[store]||0) - montant, 0) },
+      accessoireWeekly:   { ...cAW, [store]: Math.max((cAW[store]||0) - montant, 0) }
+    }, { merge:true });
+  });
+};
+
+window.validateAccessoireAdmin = async function(){
+  if(!isAdmin()) return;
+  const stores = getCurrentSectorStores();
+  const storeList = stores.map((s,i) => `${i+1}. ${s}`).join("\n");
+  const storeInput = prompt(`Pour quelle boutique ?\n${storeList}`, "1");
+  if(storeInput === null) return;
+  const idx = parseInt(storeInput) - 1;
+  if(isNaN(idx) || idx < 0 || idx >= stores.length){ alert("Boutique invalide."); return; }
+  const targetStore = stores[idx];
+
+  const input = prompt(`Montant TTC accessoire pour ${targetStore} (€) :`, "0");
+  if(input === null) return;
+  const montant = parseFloat(input.replace(",", "."));
+  if(isNaN(montant) || montant <= 0){ alert("Montant invalide."); return; }
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+    const data = snap.data();
+    const cAP = data.accessoirePersonal || {};
+    const cAW = data.accessoireWeekly   || {};
+    transaction.set(ref, {
+      accessoirePersonal: { ...cAP, [targetStore]: (cAP[targetStore]||0) + montant },
+      accessoireWeekly:   { ...cAW, [targetStore]: (cAW[targetStore]||0) + montant }
+    }, { merge:true });
+  });
+};
+
+window.cancelAccessoireAdmin = async function(){
+  if(!isAdmin()) return;
+  const stores = getCurrentSectorStores();
+  const storeList = stores.map((s,i) => `${i+1}. ${s}`).join("\n");
+  const storeInput = prompt(`Pour quelle boutique ?\n${storeList}`, "1");
+  if(storeInput === null) return;
+  const idx = parseInt(storeInput) - 1;
+  if(isNaN(idx) || idx < 0 || idx >= stores.length){ alert("Boutique invalide."); return; }
+  const targetStore = stores[idx];
+
+  const input = prompt(`Montant TTC à annuler pour ${targetStore} (€) :`, "0");
+  if(input === null) return;
+  const montant = parseFloat(input.replace(",", "."));
+  if(isNaN(montant) || montant <= 0){ alert("Montant invalide."); return; }
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+    const data = snap.data();
+    const cAP = data.accessoirePersonal || {};
+    const cAW = data.accessoireWeekly   || {};
+    transaction.set(ref, {
+      accessoirePersonal: { ...cAP, [targetStore]: Math.max((cAP[targetStore]||0) - montant, 0) },
+      accessoireWeekly:   { ...cAW, [targetStore]: Math.max((cAW[targetStore]||0) - montant, 0) }
+    }, { merge:true });
+  });
+};
+
+/* =====================================================================
+   CODE CERCLE — RENDU ET ACTIONS
+   ===================================================================== */
+function renderCercle(){
+  const panel   = document.getElementById("cerclePanel");
+  const content = document.getElementById("cercleContent");
+  if(!panel || !content) return;
+
+  /* Boutiques à afficher selon le profil */
+  let stores = [];
+  if(isManager())  stores = [currentStore];
+  else if(isStore()) stores = [currentUser];
+  else if(isAdmin()) stores = getCurrentSectorStores();
+  else if(isDirector()) stores = allStoreUsers;
+
+  /* Vérifier si au moins un stock a été initialisé */
+  const hasAnyStock = stores.some(store =>
+    cercleTypes.some(t => (globalData.cercleStock?.[store]?.[t]?.initial || 0) > 0)
+  );
+
+  if(!hasAnyStock){ panel.classList.add("hidden"); return; }
+  panel.classList.remove("hidden");
+
+  /* Pour store et manager : afficher uniquement leur boutique */
+  const targetStore = (isStore() || isManager()) ? (currentStore || currentUser) : null;
+
+  content.innerHTML = cercleTypes.map(type => {
+    /* Agréger les données selon le profil */
+    let initial = 0, restant = 0;
+    if(targetStore){
+      initial = globalData.cercleStock?.[targetStore]?.[type]?.initial || 0;
+      restant = globalData.cercleStock?.[targetStore]?.[type]?.restant || 0;
+    } else {
+      stores.forEach(s => {
+        initial += globalData.cercleStock?.[s]?.[type]?.initial || 0;
+        restant += globalData.cercleStock?.[s]?.[type]?.restant || 0;
+      });
+    }
+
+    if(initial === 0) return ""; /* pas d'objectif saisi */
+
+    const ratio = initial > 0 ? restant / initial : 0;
+    let bgColor = "#66cc88"; /* vert */
+    if(restant === 0) bgColor = "#cc3333"; /* rouge */
+    else if(ratio <= CERCLE_SEUIL_ORANGE) bgColor = "#ff7a00"; /* orange */
+
+    const canUse = isStore() || isManager();
+
+    /* Détail par boutique pour admin/director */
+    let detailHTML = "";
+    if(!targetStore){
+      detailHTML = stores.map(s => {
+        const r = globalData.cercleStock?.[s]?.[type]?.restant || 0;
+        const i = globalData.cercleStock?.[s]?.[type]?.initial || 0;
+        if(i === 0) return "";
+        return `<div style="font-size:11px;margin-top:2px;">${s} : ${r}/${i}</div>`;
+      }).join("");
+    }
+
+    return `
+      <div style="background:${bgColor};border-radius:14px;padding:12px 16px;min-width:160px;flex:1;max-width:220px;box-shadow:0 6px 16px rgba(0,0,0,0.3);">
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px;">${type}</div>
+        <div style="font-size:22px;font-weight:900;">${restant}<span style="font-size:13px;font-weight:400;opacity:0.8;"> / ${initial}</span></div>
+        ${detailHTML}
+        ${canUse ? `<button class="validate" onclick="utiliserCercle('${type}')" style="margin-top:8px;width:100%;font-size:12px;padding:6px;">Utiliser un code</button>` : ""}
+      </div>`;
+  }).join("");
+}
+
+window.utiliserCercle = async function(type){
+  if(!isStore() && !isManager()) return;
+  const store = isManager() ? currentStore : currentUser;
+  const stock = globalData.cercleStock?.[store]?.[type] || { initial:0, restant:0 };
+  if(stock.restant <= 0){ alert("Plus de codes disponibles pour " + type); return; }
+  if(!confirm(`Utiliser un code ${type} ?`)) return;
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if(!snap.exists()) return;
+    const data = snap.data();
+    const cCS = structuredClone(data.cercleStock || {});
+    if(!cCS[store]) cCS[store] = {};
+    if(!cCS[store][type]) cCS[store][type] = { initial:0, restant:0 };
+    cCS[store][type].restant = Math.max(cCS[store][type].restant - 1, 0);
+    transaction.set(ref, { cercleStock: cCS }, { merge:true });
+  });
+};
+
+window.saveCercleStock = async function(){
+  if(!isManager()) return;
+  if(!confirm("Valider le stock Code Cercle ?")) return;
+
+  const cCS = structuredClone(globalData.cercleStock || {});
+  if(!cCS[currentStore]) cCS[currentStore] = {};
+
+  cercleTypes.forEach(t => {
+    const key = t.replace(/ /g, '_');
+    const val = parseInt(document.getElementById("cercle-" + key)?.value) || 0;
+    const existing = cCS[currentStore][t] || { initial:0, restant:0 };
+    /* Si on augmente le stock, on ajoute la différence au restant */
+    const diff = val - (existing.initial || 0);
+    cCS[currentStore][t] = {
+      initial: val,
+      restant: Math.max((existing.restant || 0) + diff, 0)
+    };
+  });
+
+  await setDoc(ref, { cercleStock: cCS }, { merge:true });
+};
 function renderAdmin(){
   const div   = document.getElementById("adminInputs");
   const title = document.getElementById("adminTitle");
@@ -1554,9 +2056,8 @@ function renderAdmin(){
 
   if(isAdmin()){
     title.textContent = `Administration — ${sectors[currentSector]?.label}`;
-
-    /* Objectifs secteur par KPI */
     const sectorInitial = globalData.sectorInitial?.[currentSector] || {};
+    const accObjSector  = globalData.accessoireObjective?.sector?.[currentSector] || 0;
     boutiqueDisplayList.forEach(item => {
       div.innerHTML += `
         <div>
@@ -1564,6 +2065,11 @@ function renderAdmin(){
           <input type="number" id="obj-${item}" value="${sectorInitial[item] || 0}">
         </div>`;
     });
+    div.innerHTML += `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #444;">
+        💰 Objectif Accessoire (€ TTC secteur) :
+        <input type="number" id="obj-accessoire-sector" value="${accObjSector}" step="0.01">
+      </div>`;
     return;
   }
 
@@ -1587,6 +2093,21 @@ function renderAdmin(){
           <input type="number" id="obj-${item}" value="${boutiqueObjectives[item] || 0}">
         </div>`;
     });
+
+    const accObjStore = globalData.accessoireObjective?.store?.[currentStore] || 0;
+    div.innerHTML += `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #444;">
+        💰 Objectif Accessoire (€ TTC boutique) :
+        <input type="number" id="obj-accessoire-store" value="${accObjStore}" step="0.01">
+      </div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #444;">
+        <div style="font-weight:700;margin-bottom:8px;">🔵 Stock Code Cercle</div>
+        ${cercleTypes.map(t => {
+          const stock = globalData.cercleStock?.[currentStore]?.[t] || { initial:0, restant:0 };
+          return `<div style="margin-bottom:4px;">${t} : <input type="number" id="cercle-${t.replace(/ /g,'_')}" value="${stock.initial}" style="width:70px;"> (restant : ${stock.restant})</div>`;
+        }).join("")}
+        <button onclick="saveCercleStock()" style="background:#3a9ad9;color:white;margin-top:8px;">Valider stock Code Cercle</button>
+      </div>`;
   }
 }
 
@@ -1599,6 +2120,8 @@ window.saveObjectives = async function(){
   if(isAdmin()){
     const currentSectorInitial = globalData.sectorInitial || {};
     const updatedSectorInitial = { ...(currentSectorInitial[currentSector] || {}) };
+    const cAO = globalData.accessoireObjective || { sector:{}, store:{} };
+    const accVal = parseFloat(document.getElementById("obj-accessoire-sector")?.value) || 0;
 
     boutiqueDisplayList.forEach(item => {
       const val = parseInt(document.getElementById("obj-" + item).value) || 0;
@@ -1606,10 +2129,8 @@ window.saveObjectives = async function(){
     });
 
     await setDoc(ref, {
-      sectorInitial: {
-        ...currentSectorInitial,
-        [currentSector]: updatedSectorInitial
-      }
+      sectorInitial: { ...currentSectorInitial, [currentSector]: updatedSectorInitial },
+      accessoireObjective: { ...cAO, sector: { ...(cAO.sector||{}), [currentSector]: accVal } }
     }, { merge:true });
     return;
   }
@@ -1618,6 +2139,8 @@ window.saveObjectives = async function(){
     const cBO = globalData.boutiqueObjectives || {};
     const cBI = globalData.boutiqueInitial    || {};
     const cBP = globalData.boutiqueProgress   || {};
+    const cAO = globalData.accessoireObjective || { sector:{}, store:{} };
+    const accVal = parseFloat(document.getElementById("obj-accessoire-store")?.value) || 0;
 
     const updatedObj  = { ...(cBO[currentStore] || {}) };
     const updatedInit = { ...(cBI[currentStore] || {}) };
@@ -1631,9 +2154,10 @@ window.saveObjectives = async function(){
     });
 
     await setDoc(ref, {
-      boutiqueObjectives: { ...cBO, [currentStore]: updatedObj },
-      boutiqueInitial:    { ...cBI, [currentStore]: updatedInit },
-      boutiqueProgress:   { ...cBP, [currentStore]: resetProg }
+      boutiqueObjectives:  { ...cBO, [currentStore]: updatedObj },
+      boutiqueInitial:     { ...cBI, [currentStore]: updatedInit },
+      boutiqueProgress:    { ...cBP, [currentStore]: resetProg },
+      accessoireObjective: { ...cAO, store: { ...(cAO.store||{}), [currentStore]: accVal } }
     }, { merge:true });
   }
 };
