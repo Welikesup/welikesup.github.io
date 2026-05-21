@@ -1328,7 +1328,7 @@ function renderDirector(){
         });
 
         const sectorInitial = globalData.sectorInitial?.[sk]?.[item] || 0;
-        const percentText   = sectorInitial > 0 ? (todayTotal / sectorInitial) * 100 : 0;
+        const percentText   = sectorInitial > 0 ? (weeklyTotal / sectorInitial) * 100 : 0;
         const percentBar    = Math.min(percentText, 100);
 
         let bgColor = "#ff7a00", textColor = "#ff7a00", extraClass = "";
