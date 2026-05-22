@@ -1113,6 +1113,8 @@ function display(){
     const percentText    = sectorInitial > 0 ? (weeklySector / sectorInitial) * 100 : 0;
 
     const isRRStore = isStore() && sectors["secteur2"].stores.includes(currentUser);
+    const storeTodayRR  = globalData.personal?.[currentUser]?.[item] || 0;
+    const storeWeeklyRR = globalData.weeklyPersonal?.[currentUser]?.[item] || 0;
 
     let percentColor = "#ff7a00";
     if(percentText >= 100 && percentText < 120) percentColor = "#66cc88";
@@ -1196,9 +1198,6 @@ function display(){
         <div class="personal-line">Boutique aujourd'hui : <strong>${storeTodayRR}</strong></div>
       `;
     }
-
-    const storeTodayRR  = globalData.personal?.[currentUser]?.[item] || 0;
-    const storeWeeklyRR = globalData.weeklyPersonal?.[currentUser]?.[item] || 0;
 
     let buttonsHTML = "";
     if(canSell){
@@ -1897,43 +1896,30 @@ function renderAccessoireTile(){
 
   const tile = document.createElement("div");
   tile.id = "accessoireTile";
-
-  /* Objectif restant */
-  const objRestant = objective > 0
-    ? (weeklyTotal <= objective
-      ? `Objectif restant : <strong>${fmt(objective - weeklyTotal)}</strong>`
-      : `Objectif dépassé de : <strong>${fmt(weeklyTotal - objective)}</strong>`)
-    : "";
-
-  /* Barre */
-  const barreHTML = objective > 0 ? `
-    <div class="progress-container">
-      <div class="progress-bar" style="width:${percentBar}%"></div>
-      <div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
-    </div>` : "";
+  tile.className = `item ${glowClass}`;
+  tile.style.background = bgColor;
 
   tile.innerHTML = `
-    <div class="item ${glowClass}" style="background:${bgColor};">
-      <h3>Accessoire</h3>
-      ${objRestant ? `<p>${objRestant}</p>` : ""}
-      ${isManager() ? `
-        <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
-        <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
-        ${barreHTML}
-        <div class="personal-line">Boutique semaine : <strong>${fmt(boutiqueWeeklyTotal)}</strong></div>
-        <div class="personal-line">Boutique aujourd'hui : <strong>${fmt(boutiqueTodayTotal)}</strong></div>
-      ` : isAdmin() ? `
-        <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
-        <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
-        ${barreHTML}
-      ` : `
-        <div class="personal-line">Semaine : <strong>${fmt(weeklyTotal)}</strong></div>
-        <div class="personal-line">Aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
-        ${barreHTML}
-      `}
-      ${detailHTML}
-      ${buttonsHTML}
-    </div>`;
+    <h3>Accessoire</h3>
+    ${objRestant ? `<p>${objRestant}</p>` : ""}
+    ${isManager() ? `
+      <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
+      <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
+      ${barreHTML}
+      <div class="personal-line">Boutique semaine : <strong>${fmt(boutiqueWeeklyTotal)}</strong></div>
+      <div class="personal-line">Boutique aujourd'hui : <strong>${fmt(boutiqueTodayTotal)}</strong></div>
+    ` : isAdmin() ? `
+      <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
+      <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
+      ${barreHTML}
+    ` : `
+      <div class="personal-line">Semaine : <strong>${fmt(weeklyTotal)}</strong></div>
+      <div class="personal-line">Aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
+      ${barreHTML}
+    `}
+    ${detailHTML}
+    ${buttonsHTML}
+  `;
   container.appendChild(tile);
 }
 
