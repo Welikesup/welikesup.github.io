@@ -2095,7 +2095,7 @@ function renderCercle(){
   const hasAnyStock = stores.some(store =>
     cercleTypes.some(t => {
       const s = globalData.cercleStock?.[store]?.[t];
-      return s && s.initial !== 0;
+      return s && (s.initial ?? 0) !== 0;
     })
   );
 
@@ -2109,12 +2109,12 @@ function renderCercle(){
     /* Agréger les données selon le profil */
     let initial = 0, restant = 0;
     if(targetStore){
-      initial = globalData.cercleStock?.[targetStore]?.[type]?.initial || 0;
-      restant = globalData.cercleStock?.[targetStore]?.[type]?.restant || 0;
+      initial = globalData.cercleStock?.[targetStore]?.[type]?.initial ?? 0;
+      restant = globalData.cercleStock?.[targetStore]?.[type]?.restant ?? 0;
     } else {
       stores.forEach(s => {
-        initial += globalData.cercleStock?.[s]?.[type]?.initial || 0;
-        restant += globalData.cercleStock?.[s]?.[type]?.restant || 0;
+        initial += globalData.cercleStock?.[s]?.[type]?.initial ?? 0;
+        restant += globalData.cercleStock?.[s]?.[type]?.restant ?? 0;
       });
     }
 
@@ -2131,8 +2131,8 @@ function renderCercle(){
     let detailHTML = "";
     if(!targetStore){
       detailHTML = stores.map(s => {
-        const r = globalData.cercleStock?.[s]?.[type]?.restant || 0;
-        const i = globalData.cercleStock?.[s]?.[type]?.initial || 0;
+        const r = globalData.cercleStock?.[s]?.[type]?.restant ?? 0;
+        const i = globalData.cercleStock?.[s]?.[type]?.initial ?? 0;
         if(i === 0) return "";
         return `<div style="font-size:11px;margin-top:2px;">${s} : ${r}/${i}</div>`;
       }).join("");
