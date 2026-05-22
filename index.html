@@ -1169,7 +1169,7 @@ function display(){
 
     const objectiveBlock = hasObjective && sectorInitial > 0 ? `
       <p>${objectifText}</p>
-      ${isManager() ? `
+      ${(isManager() || isRRStore) ? `
         <div class="personal-line">Secteur semaine : <strong>${weeklySector}</strong></div>
         <div class="personal-line">Secteur aujourd'hui : <strong>${todaySectorValue}</strong></div>
       ` : ``}
@@ -1177,11 +1177,9 @@ function display(){
         <div class="progress-bar" style="width:${percentBar}%"></div>
         <div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
       </div>
-    ` : (hasObjective && isManager() ? `
-      ${isManager() ? `
-        <div class="personal-line">Secteur semaine : <strong>${weeklySector}</strong></div>
-        <div class="personal-line">Secteur aujourd'hui : <strong>${todaySectorValue}</strong></div>
-      ` : ``}
+    ` : (hasObjective && (isManager() || isRRStore) ? `
+      <div class="personal-line">Secteur semaine : <strong>${weeklySector}</strong></div>
+      <div class="personal-line">Secteur aujourd'hui : <strong>${todaySectorValue}</strong></div>
     ` : ``);
 
     let extraManagerLines = "";
@@ -1189,6 +1187,11 @@ function display(){
       extraManagerLines = `
         <div class="personal-line">Boutique semaine : <strong>${storeWeekValue}</strong></div>
         <div class="personal-line">Boutique aujourd'hui : <strong>${storeTodayValue}</strong></div>
+      `;
+    } else if(isRRStore){
+      extraManagerLines = `
+        <div class="personal-line">Boutique semaine : <strong>${storeWeeklyRR}</strong></div>
+        <div class="personal-line">Boutique aujourd'hui : <strong>${storeTodayRR}</strong></div>
       `;
     }
 
@@ -1222,14 +1225,9 @@ function display(){
     div.innerHTML = `
       <h3>${item}</h3>
       ${objectiveBlock}
-      ${isManager() ? extraManagerLines : isRRStore ? `
-        <div class="personal-line">Ventes du secteur semaine : <strong>${weeklySector}</strong></div>
-        <div class="personal-line">Ventes du secteur aujourd'hui : <strong>${todaySectorValue}</strong></div>
-        <div class="personal-line">Boutique semaine : <strong>${storeWeeklyRR}</strong></div>
-        <div class="personal-line">Boutique aujourd'hui : <strong>${storeTodayRR}</strong></div>
-      ` : `
-        <div class="personal-line">${hasTileOverview() ? "Ventes du secteur semaine" : "Ventes de la boutique semaine"} : <strong>${hasTileOverview() ? weeklySector : storeWeeklyRR}</strong></div>
-        <div class="personal-line">${hasTileOverview() ? "Ventes du secteur aujourd'hui" : "Ventes de la boutique aujourd'hui"} : <strong>${hasTileOverview() ? todaySectorValue : storeTodayRR}</strong></div>
+      ${(isManager() || isRRStore) ? extraManagerLines : `
+        <div class="personal-line">${hasTileOverview() ? "Ventes du secteur semaine" : "Ventes de la boutique semaine"} : <strong>${hasTileOverview() ? weeklySector : (globalData.weeklyPersonal?.[currentUser]?.[item]||0)}</strong></div>
+        <div class="personal-line">${hasTileOverview() ? "Ventes du secteur aujourd'hui" : "Ventes de la boutique aujourd'hui"} : <strong>${hasTileOverview() ? todaySectorValue : (globalData.personal?.[currentUser]?.[item]||0)}</strong></div>
       `}
       ${detailHTML}
       ${leaderHTML}
