@@ -1860,12 +1860,13 @@ function renderAccessoireTile(){
       : `Objectif dépassé de : <strong>${fmt(weeklyTotal - objective)}</strong>`)
     : "";
 
-  /* Détail par boutique pour admin/manager/director */
+  /* Détail par boutique pour admin/manager/director/RR stores */
   let detailHTML = "";
-  if(isAdmin() || isManager() || isDirector()){
+  const isRRStoreAcc = isStore() && sectors["secteur2"].stores.includes(currentUser);
+  if(isAdmin() || isManager() || isDirector() || isRRStoreAcc){
     const stores = isDirector() ? allStoreUsers : getCurrentSectorStores();
     stores.forEach(s => {
-      if(isManager() && s === currentStore) return;
+      if((isManager() && s === currentStore) || (isRRStoreAcc && s === currentUser)) return;
       const v = globalData.accessoirePersonal?.[s] || 0;
       detailHTML += `<div style="font-size:12px;margin-top:2px;line-height:1.15;">${s} : ${fmt(v)}</div>`;
     });
@@ -1922,6 +1923,12 @@ function renderAccessoireTile(){
       ${barreHTML}
       <div class="personal-line">Boutique semaine : <strong>${fmt(boutiqueWeeklyTotal)}</strong></div>
       <div class="personal-line">Boutique aujourd'hui : <strong>${fmt(boutiqueTodayTotal)}</strong></div>
+    ` : isRRStoreAcc ? `
+      <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
+      <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
+      ${barreHTML}
+      <div class="personal-line">Boutique semaine : <strong>${fmt(globalData.accessoireWeekly?.[currentUser]||0)}</strong></div>
+      <div class="personal-line">Boutique aujourd'hui : <strong>${fmt(globalData.accessoirePersonal?.[currentUser]||0)}</strong></div>
     ` : isAdmin() ? `
       <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
       <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
