@@ -441,7 +441,6 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
 
   <div id="cerclePanel" class="store-panel hidden">
     <h3>🔵 Code Cercle</h3>
-    <div id="cercleDebug"></div>
     <div id="cercleContent" style="display:flex;flex-wrap:wrap;gap:12px;"></div>
   </div>
 
@@ -470,7 +469,6 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
 
     <div id="directorCerclePanel" class="store-panel hidden">
       <h3>🔵 Code Cercle</h3>
-      <div id="directorCercleDebug"></div>
       <div id="directorCercleContent" style="display:flex;flex-wrap:wrap;gap:12px;"></div>
     </div>
   </div>
@@ -2102,17 +2100,6 @@ function renderCercle(){
   else if(isAdmin()) stores = getCurrentSectorStores();
   else if(isDirector()) stores = allStoreUsers;
 
-  /* DEBUG temporaire */
-  panel.classList.remove("hidden");
-  const debugEl = document.getElementById(debugId);
-  if(debugEl){
-    const stockData = globalData.cercleStock?.[stores[0]] || {};
-    debugEl.innerHTML = `<div style="background:#333;color:#fff;padding:10px;font-size:11px;margin:10px;">
-      Store: ${stores[0]}<br>
-      Stock: ${JSON.stringify(stockData)}
-    </div>`;
-  }
-
   /* Vérifier si au moins un stock a été initialisé */
   const hasAnyStock = stores.some(store =>
     cercleTypes.some(t => {
@@ -2140,7 +2127,7 @@ function renderCercle(){
       });
     }
 
-    if(initial === 0) return ""; /* pas d'objectif saisi */
+    if(initial === 0 && restant === 0) return ""; /* rien saisi */
 
     const ratio = initial > 0 ? restant / initial : 0;
     let bgColor = "#66cc88"; /* vert */
