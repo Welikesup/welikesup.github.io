@@ -1827,6 +1827,8 @@ window.adminCatchUp = async function(item){
    TUILE ACCESSOIRE
    ===================================================================== */
 function renderAccessoireTile(){
+  if(isDirector()) return;
+
   /* Supprimer l'ancienne tuile accessoire si elle existe */
   const existing = document.getElementById("accessoireTile");
   if(existing) existing.remove();
@@ -2091,7 +2093,10 @@ function renderCercle(){
 
   /* Vérifier si au moins un stock a été initialisé */
   const hasAnyStock = stores.some(store =>
-    cercleTypes.some(t => (globalData.cercleStock?.[store]?.[t]?.initial || 0) > 0)
+    cercleTypes.some(t => {
+      const s = globalData.cercleStock?.[store]?.[t];
+      return s && (s.initial > 0 || s.restant !== 0);
+    })
   );
 
   if(!hasAnyStock){ panel.classList.add("hidden"); return; }
@@ -2113,11 +2118,11 @@ function renderCercle(){
       });
     }
 
-    if(initial === 0) return ""; /* pas d'objectif saisi */
+    if(initial === 0 && restant === 0) return ""; /* pas d'objectif saisi */
 
     const ratio = initial > 0 ? restant / initial : 0;
     let bgColor = "#66cc88"; /* vert */
-    if(restant === 0) bgColor = "#cc3333"; /* rouge */
+    if(restant <= 0) bgColor = "#cc3333"; /* rouge si 0 ou négatif */
     else if(ratio <= CERCLE_SEUIL_ORANGE) bgColor = "#ff7a00"; /* orange */
 
     const canUse = isStore() || isManager();
