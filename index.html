@@ -439,6 +439,12 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
     <div id="storeTrackingContent" class="store-progress-list"></div>
   </div>
 
+  <div id="cerclePanel" class="store-panel hidden">
+    <h3>🔵 Code Cercle</h3>
+    <div id="cercleDebug"></div>
+    <div id="cercleContent" style="display:flex;flex-wrap:wrap;gap:12px;"></div>
+  </div>
+
   <div id="directorPanel" class="hidden">
     <div style="padding:20px 20px 0 20px;">
       <div style="background:#1c1c1c;border-radius:15px;padding:16px 20px;">
@@ -462,9 +468,10 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
       </div>
     </div>
 
-    <div id="cerclePanel" class="store-panel hidden">
+    <div id="directorCerclePanel" class="store-panel hidden">
       <h3>🔵 Code Cercle</h3>
-      <div id="cercleContent" style="display:flex;flex-wrap:wrap;gap:12px;"></div>
+      <div id="directorCercleDebug"></div>
+      <div id="directorCercleContent" style="display:flex;flex-wrap:wrap;gap:12px;"></div>
     </div>
   </div>
 </div>
@@ -2080,8 +2087,12 @@ window.cancelAccessoireAdmin = async function(){
    CODE CERCLE — RENDU ET ACTIONS
    ===================================================================== */
 function renderCercle(){
-  const panel   = document.getElementById("cerclePanel");
-  const content = document.getElementById("cercleContent");
+  const panelId   = isDirector() ? "directorCerclePanel"   : "cerclePanel";
+  const contentId = isDirector() ? "directorCercleContent" : "cercleContent";
+  const debugId   = isDirector() ? "directorCercleDebug"   : "cercleDebug";
+
+  const panel   = document.getElementById(panelId);
+  const content = document.getElementById(contentId);
   if(!panel || !content) return;
 
   /* Boutiques à afficher selon le profil */
@@ -2090,6 +2101,17 @@ function renderCercle(){
   else if(isStore()) stores = [currentUser];
   else if(isAdmin()) stores = getCurrentSectorStores();
   else if(isDirector()) stores = allStoreUsers;
+
+  /* DEBUG temporaire */
+  panel.classList.remove("hidden");
+  const debugEl = document.getElementById(debugId);
+  if(debugEl){
+    const stockData = globalData.cercleStock?.[stores[0]] || {};
+    debugEl.innerHTML = `<div style="background:#333;color:#fff;padding:10px;font-size:11px;margin:10px;">
+      Store: ${stores[0]}<br>
+      Stock: ${JSON.stringify(stockData)}
+    </div>`;
+  }
 
   /* Vérifier si au moins un stock a été initialisé */
   const hasAnyStock = stores.some(store =>
