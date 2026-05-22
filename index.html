@@ -1887,9 +1887,10 @@ function renderAccessoireTile(){
         <button class="catchup" onclick="catchUpAccessoireAdmin()">Rattraper</button>
       </div>`;
   } else if(isStore()){
+    const cancelOk = !!(cancelTimers["__accessoire__"] && Date.now() < cancelTimers["__accessoire__"]);
     buttonsHTML = `
       <button class="validate" onclick="validateAccessoire()">Valider une vente</button>
-      <button class="cancel" onclick="cancelAccessoire()">Annuler</button>`;
+      <button class="cancel" ${!cancelOk ? "disabled" : ""} onclick="cancelAccessoire()">Annuler</button>`;
   }
 
   const tile = document.createElement("div");
@@ -1901,8 +1902,8 @@ function renderAccessoireTile(){
       ${isManager() ? `
         <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
         <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
-        <div class="personal-line">Boutique semaine : <strong>${fmt(globalData.accessoireWeekly?.[currentStore]||0)}</strong></div>
-        <div class="personal-line">Boutique aujourd'hui : <strong>${fmt(globalData.accessoirePersonal?.[currentStore]||0)}</strong></div>
+        <div class="personal-line">Boutique semaine : <strong>${fmt(boutiqueWeeklyTotal)}</strong></div>
+        <div class="personal-line">Boutique aujourd'hui : <strong>${fmt(boutiqueTodayTotal)}</strong></div>
       ` : isAdmin() ? `
         <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
         <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
@@ -1947,6 +1948,16 @@ function showAmountModal(title, label, callback){
 
 window.validateAccessoire = async function(){
   const store = isManager() ? currentStore : currentUser;
+
+  if(isStore()){
+    cancelTimers["__accessoire__"] = Date.now() + 20000;
+    if(cancelTimerTimeouts["__accessoire__"]) clearTimeout(cancelTimerTimeouts["__accessoire__"]);
+    cancelTimerTimeouts["__accessoire__"] = setTimeout(() => {
+      cancelTimers["__accessoire__"] = null;
+      renderAccessoireTile();
+    }, 20000);
+  }
+
   showAmountModal("Valider accessoire", "Montant TTC de la vente (€) :", async (montant) => {
     await runTransaction(db, async (transaction) => {
       const snap = await transaction.get(ref);
@@ -1964,6 +1975,7 @@ window.validateAccessoire = async function(){
 
 window.cancelAccessoire = async function(){
   const store = isManager() ? currentStore : currentUser;
+  if(isStore() && (!cancelTimers["__accessoire__"] || Date.now() > cancelTimers["__accessoire__"])) return;
   showAmountModal("Annuler accessoire", "Montant TTC à annuler (€) :", async (montant) => {
     await runTransaction(db, async (transaction) => {
       const snap = await transaction.get(ref);
