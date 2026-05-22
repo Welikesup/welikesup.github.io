@@ -1112,6 +1112,8 @@ function display(){
     const percentBar     = Math.min(sectorInitial > 0 ? (weeklySector / sectorInitial) * 100 : 0, 100);
     const percentText    = sectorInitial > 0 ? (weeklySector / sectorInitial) * 100 : 0;
 
+    const isRRStore = isStore() && sectors["secteur2"].stores.includes(currentUser);
+
     let percentColor = "#ff7a00";
     if(percentText >= 100 && percentText < 120) percentColor = "#66cc88";
     if(percentText >= 120) percentColor = "#1e7e34";
@@ -1195,7 +1197,6 @@ function display(){
       `;
     }
 
-    const isRRStore = isStore() && sectors["secteur2"].stores.includes(currentUser);
     const storeTodayRR  = globalData.personal?.[currentUser]?.[item] || 0;
     const storeWeeklyRR = globalData.weeklyPersonal?.[currentUser]?.[item] || 0;
 
