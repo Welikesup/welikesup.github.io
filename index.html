@@ -1896,28 +1896,41 @@ function renderAccessoireTile(){
 
   const tile = document.createElement("div");
   tile.id = "accessoireTile";
+
+  /* Objectif restant */
+  const objRestant = objective > 0
+    ? (weeklyTotal <= objective
+      ? `Objectif restant : <strong>${fmt(objective - weeklyTotal)}</strong>`
+      : `Objectif dépassé de : <strong>${fmt(weeklyTotal - objective)}</strong>`)
+    : "";
+
+  /* Barre */
+  const barreHTML = objective > 0 ? `
+    <div class="progress-container">
+      <div class="progress-bar" style="width:${percentBar}%"></div>
+      <div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
+    </div>` : "";
+
   tile.innerHTML = `
     <div class="item ${glowClass}" style="background:${bgColor};">
-      <h3>💰 Accessoire</h3>
-      ${diffText ? `<p>${diffText}</p>` : ""}
+      <h3>Accessoire</h3>
+      ${objRestant ? `<p>${objRestant}</p>` : ""}
       ${isManager() ? `
         <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
         <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
+        ${barreHTML}
         <div class="personal-line">Boutique semaine : <strong>${fmt(boutiqueWeeklyTotal)}</strong></div>
         <div class="personal-line">Boutique aujourd'hui : <strong>${fmt(boutiqueTodayTotal)}</strong></div>
       ` : isAdmin() ? `
         <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
         <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
+        ${barreHTML}
       ` : `
         <div class="personal-line">Semaine : <strong>${fmt(weeklyTotal)}</strong></div>
         <div class="personal-line">Aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
+        ${barreHTML}
       `}
       ${detailHTML}
-      ${objective > 0 ? `
-        <div class="progress-container">
-          <div class="progress-bar" style="width:${percentBar}%"></div>
-          <div class="progress-text" style="color:${percentColor}">${percentText.toFixed(0)}%</div>
-        </div>` : ""}
       ${buttonsHTML}
     </div>`;
   container.appendChild(tile);
