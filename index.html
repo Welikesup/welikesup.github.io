@@ -1192,10 +1192,11 @@ function display(){
       `;
     }
 
-    const weeklyText  = hasTileOverview() ? "Ventes du secteur semaine"     : "Ventes de la boutique semaine";
-    const personalText= hasTileOverview() ? "Ventes du secteur aujourd'hui" : "Ventes de la boutique aujourd'hui";
-    const weeklyUserValue = hasTileOverview() ? weeklySector : (globalData.weeklyPersonal?.[currentUser]?.[item] || 0);
-    const userValue       = hasTileOverview() ? todaySectorValue : (globalData.personal?.[currentUser]?.[item] || 0);
+    const isRRStore = isStore() && sectors["secteur2"].stores.includes(currentUser);
+    const weeklyText   = hasTileOverview() ? "Ventes du secteur semaine"     : "Ventes de la boutique semaine";
+    const personalText = hasTileOverview() ? "Ventes du secteur aujourd'hui" : "Ventes de la boutique aujourd'hui";
+    const weeklyUserValue = (hasTileOverview() && !isRRStore) ? weeklySector : (globalData.weeklyPersonal?.[currentUser]?.[item] || 0);
+    const userValue       = (hasTileOverview() && !isRRStore) ? todaySectorValue : (globalData.personal?.[currentUser]?.[item] || 0);
 
     let buttonsHTML = "";
     if(canSell){
@@ -1807,15 +1808,21 @@ function renderAccessoireTile(){
 
   /* Totaux jour et semaine */
   let todayTotal = 0, weeklyTotal = 0;
+  let boutiqueTodayTotal = 0, boutiqueWeeklyTotal = 0;
+
   if(isStore()){
-    const store = currentUser;
-    todayTotal  = globalData.accessoirePersonal?.[store] || 0;
-    weeklyTotal = globalData.accessoireWeekly?.[store]   || 0;
+    todayTotal  = globalData.accessoirePersonal?.[currentUser] || 0;
+    weeklyTotal = globalData.accessoireWeekly?.[currentUser]   || 0;
   } else if(isManager()){
-    todayTotal  = globalData.accessoirePersonal?.[currentStore] || 0;
-    weeklyTotal = globalData.accessoireWeekly?.[currentStore]   || 0;
+    /* Totaux boutique */
+    boutiqueTodayTotal  = globalData.accessoirePersonal?.[currentStore] || 0;
+    boutiqueWeeklyTotal = globalData.accessoireWeekly?.[currentStore]   || 0;
+    /* Totaux secteur = somme toutes boutiques */
+    getCurrentSectorStores().forEach(s => {
+      todayTotal  += globalData.accessoirePersonal?.[s] || 0;
+      weeklyTotal += globalData.accessoireWeekly?.[s]   || 0;
+    });
   } else {
-    /* admin ou director : somme du secteur */
     const stores = isDirector() ? allStoreUsers : getCurrentSectorStores();
     stores.forEach(s => {
       todayTotal  += globalData.accessoirePersonal?.[s] || 0;
@@ -1891,7 +1898,12 @@ function renderAccessoireTile(){
     <div class="item ${glowClass}" style="background:${bgColor};">
       <h3>💰 Accessoire</h3>
       ${diffText ? `<p>${diffText}</p>` : ""}
-      ${(isAdmin() || isManager()) ? `
+      ${isManager() ? `
+        <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
+        <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
+        <div class="personal-line">Boutique semaine : <strong>${fmt(globalData.accessoireWeekly?.[currentStore]||0)}</strong></div>
+        <div class="personal-line">Boutique aujourd'hui : <strong>${fmt(globalData.accessoirePersonal?.[currentStore]||0)}</strong></div>
+      ` : isAdmin() ? `
         <div class="personal-line">Secteur semaine : <strong>${fmt(weeklyTotal)}</strong></div>
         <div class="personal-line">Secteur aujourd'hui : <strong>${fmt(todayTotal)}</strong></div>
       ` : `
