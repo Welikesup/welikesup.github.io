@@ -2095,7 +2095,7 @@ function renderCercle(){
   const hasAnyStock = stores.some(store =>
     cercleTypes.some(t => {
       const s = globalData.cercleStock?.[store]?.[t];
-      return s && (s.initial > 0 || s.restant !== 0);
+      return s && s.initial !== 0;
     })
   );
 
@@ -2118,7 +2118,7 @@ function renderCercle(){
       });
     }
 
-    if(initial === 0 && restant === 0) return ""; /* pas d'objectif saisi */
+    if(initial === 0) return ""; /* pas d'objectif saisi */
 
     const ratio = initial > 0 ? restant / initial : 0;
     let bgColor = "#66cc88"; /* vert */
@@ -2204,10 +2204,16 @@ window.saveCercleStock = async function(){
   if(!cCS[currentStore]) cCS[currentStore] = {};
   cercleTypes.forEach(t => {
     const key = t.replace(/ /g, '_');
-    const val = parseInt(document.getElementById("cercle-" + key)?.value) || 0;
+    const input = document.getElementById("cercle-" + key);
+    if(!input) return;
+    const val = parseInt(input.value);
+    if(isNaN(val)) return;
     const existing = cCS[currentStore][t] || { initial:0, restant:0 };
     const diff = val - (existing.initial || 0);
-    cCS[currentStore][t] = { initial: val, restant: Math.max((existing.restant||0)+diff, 0) };
+    cCS[currentStore][t] = {
+      initial: val,
+      restant: (existing.restant || 0) + diff
+    };
   });
   await setDoc(ref, { cercleStock: cCS }, { merge:true });
 };
