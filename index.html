@@ -1193,10 +1193,8 @@ function display(){
     }
 
     const isRRStore = isStore() && sectors["secteur2"].stores.includes(currentUser);
-    const weeklyText   = hasTileOverview() ? "Ventes du secteur semaine"     : "Ventes de la boutique semaine";
-    const personalText = hasTileOverview() ? "Ventes du secteur aujourd'hui" : "Ventes de la boutique aujourd'hui";
-    const weeklyUserValue = (hasTileOverview() && !isRRStore) ? weeklySector : (globalData.weeklyPersonal?.[currentUser]?.[item] || 0);
-    const userValue       = (hasTileOverview() && !isRRStore) ? todaySectorValue : (globalData.personal?.[currentUser]?.[item] || 0);
+    const storeTodayRR  = globalData.personal?.[currentUser]?.[item] || 0;
+    const storeWeeklyRR = globalData.weeklyPersonal?.[currentUser]?.[item] || 0;
 
     let buttonsHTML = "";
     if(canSell){
@@ -1224,9 +1222,14 @@ function display(){
     div.innerHTML = `
       <h3>${item}</h3>
       ${objectiveBlock}
-      ${isManager() ? extraManagerLines : `
-        <div class="personal-line">${weeklyText} : <strong>${weeklyUserValue}</strong></div>
-        <div class="personal-line">${personalText} : <strong>${userValue}</strong></div>
+      ${isManager() ? extraManagerLines : isRRStore ? `
+        <div class="personal-line">Ventes du secteur semaine : <strong>${weeklySector}</strong></div>
+        <div class="personal-line">Ventes du secteur aujourd'hui : <strong>${todaySectorValue}</strong></div>
+        <div class="personal-line">Boutique semaine : <strong>${storeWeeklyRR}</strong></div>
+        <div class="personal-line">Boutique aujourd'hui : <strong>${storeTodayRR}</strong></div>
+      ` : `
+        <div class="personal-line">${hasTileOverview() ? "Ventes du secteur semaine" : "Ventes de la boutique semaine"} : <strong>${hasTileOverview() ? weeklySector : storeWeeklyRR}</strong></div>
+        <div class="personal-line">${hasTileOverview() ? "Ventes du secteur aujourd'hui" : "Ventes de la boutique aujourd'hui"} : <strong>${hasTileOverview() ? todaySectorValue : storeTodayRR}</strong></div>
       `}
       ${detailHTML}
       ${leaderHTML}
