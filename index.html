@@ -439,11 +439,6 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
     <div id="storeTrackingContent" class="store-progress-list"></div>
   </div>
 
-  <div id="cerclePanel" class="store-panel hidden">
-    <h3>🔵 Code Cercle</h3>
-    <div id="cercleContent" style="display:flex;flex-wrap:wrap;gap:12px;"></div>
-  </div>
-
   <div id="directorPanel" class="hidden">
     <div style="padding:20px 20px 0 20px;">
       <div style="background:#1c1c1c;border-radius:15px;padding:16px 20px;">
@@ -457,12 +452,19 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
         <h2>⚡ Secteur Terres Normandes — Mariama</h2>
         <div id="directorRanking1" style="margin-bottom:16px;"></div>
         <div id="directorKpi1" class="director-kpi-grid"></div>
+        <div id="directorAcc1" style="margin-top:8px;"></div>
       </div>
       <div class="director-sector">
         <h2>⚡ Secteur Rives Royales — Julien</h2>
         <div id="directorRanking2" style="margin-bottom:16px;"></div>
         <div id="directorKpi2" class="director-kpi-grid"></div>
+        <div id="directorAcc2" style="margin-top:8px;"></div>
       </div>
+    </div>
+
+    <div id="cerclePanel" class="store-panel hidden">
+      <h3>🔵 Code Cercle</h3>
+      <div id="cercleContent" style="display:flex;flex-wrap:wrap;gap:12px;"></div>
     </div>
   </div>
 </div>
@@ -1024,6 +1026,7 @@ async function initData(){
       renderCercle();
     } else {
       display();
+      renderAccessoireTile();
       if(isAdmin() || isManager()){
         if(!adminRendered){ renderAdmin(); adminRendered = true; }
         renderRanking();
@@ -1238,9 +1241,6 @@ function display(){
   });
 
   previousLeaderKeys = nextLeaderKeys;
-
-  /* Tuile Accessoire */
-  renderAccessoireTile();
 }
 
 /* =====================================================================
@@ -1498,12 +1498,42 @@ function renderDirector(){
           </div>`;
       }).join("");
     }
+
+    /* Accessoire secteur */
+    const accEl = document.getElementById(`directorAcc${num}`);
+    if(accEl){
+      let accWeekly = 0, accToday = 0;
+      const accObjSector = globalData.accessoireObjective?.sector?.[sk] || 0;
+      sectorStores.forEach(s => {
+        accWeekly += globalData.accessoireWeekly?.[s]   || 0;
+        accToday  += globalData.accessoirePersonal?.[s] || 0;
+      });
+      const fmt = v => v.toLocaleString("fr-FR", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " €";
+      const accPct     = accObjSector > 0 ? Math.min((accWeekly / accObjSector) * 100, 100) : 0;
+      const accPctFull = accObjSector > 0 ? (accWeekly / accObjSector) * 100 : 0;
+      let accBg = "#ff7a00", accTextColor = "#ff7a00", accGlow = "";
+      if(accPctFull >= 120){ accBg = "#1e7e34"; accTextColor = "#1e7e34"; accGlow = "glow"; }
+      else if(accPctFull >= 100){ accBg = "#66cc88"; accTextColor = "#66cc88"; }
+      const detailAcc = sectorStores.map(s => {
+        const v = globalData.accessoirePersonal?.[s] || 0;
+        return `<div style="font-size:11px;margin-top:2px;line-height:1.3;">${s} : <strong>${fmt(v)}</strong></div>`;
+      }).join("");
+      accEl.innerHTML = `
+        <div class="director-kpi-row ${accGlow}" style="background:${accBg};grid-column:span 2;">
+          <div class="director-kpi-title" style="font-size:13px;margin-bottom:6px;">Accessoire</div>
+          ${detailAcc}
+          <div style="margin-top:6px;font-size:12px;font-weight:700;">
+            Aujourd'hui : ${fmt(accToday)} &nbsp;•&nbsp; Semaine : ${fmt(accWeekly)}${accObjSector > 0 ? ` / ${fmt(accObjSector)}` : ""}
+          </div>
+          ${accObjSector > 0 ? `
+          <div class="store-progress-container" style="margin-top:4px;">
+            <div class="store-progress-bar" style="width:${accPct}%;"></div>
+            <div class="store-progress-text" style="color:${accTextColor};">${accPctFull.toFixed(0)}%</div>
+          </div>` : ""}
+        </div>`;
+    }
   });
 }
-
-/* =====================================================================
-   DECREMENT (valider une vente)
-   ===================================================================== */
 window.decrement = async function(item){
   if(isAdmin()) return;
   if(!confirm("Confirmer cette vente ?")) return;
