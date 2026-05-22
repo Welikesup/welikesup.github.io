@@ -2142,8 +2142,8 @@ function renderCercle(){
       detailHTML = stores.map(s => {
         const r = globalData.cercleStock?.[s]?.[type]?.restant ?? 0;
         const i = globalData.cercleStock?.[s]?.[type]?.initial ?? 0;
-        if(i === 0) return "";
-        return `<div style="font-size:11px;margin-top:2px;">${s} : ${r}/${i}</div>`;
+        if(i === 0 && r === 0) return "";
+        return `<div style="font-size:11px;margin-top:2px;">${s} : ${i > 0 ? `${r}/${i}` : `${r}`}</div>`;
       }).join("");
     }
 
