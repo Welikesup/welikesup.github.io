@@ -428,6 +428,8 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
   <div id="globalSummaryPanel" class="store-panel hidden">
     <div style="font-size:13px;font-weight:700;color:#ff7a00;letter-spacing:1px;margin-bottom:12px;">📊 Semaine DCR Normandie-Centre</div>
     <div id="globalSummaryContent" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;"></div>
+    <div id="boutiquesSemaineContent" style="margin-top:16px;"></div>
+  </div>
   </div>
 
   <div id="txPanel" class="store-panel hidden">
@@ -1364,6 +1366,46 @@ function renderGlobalSummary(){
         <div class="store-progress-container">
           <div class="store-progress-bar" style="width:${percentBar}%;"></div>
           <div class="store-progress-text" style="color:${textColor};">${objectiveTotal > 0 ? percentText.toFixed(0)+"%" : "—"}</div>
+        </div>
+      </div>`;
+  }).join("");
+
+  renderBoutiquesSemaine();
+}
+
+function renderBoutiquesSemaine(){
+  const container = document.getElementById("boutiquesSemaineContent");
+  if(!container) return;
+
+  const sectorStores = getCurrentSectorStores();
+
+  container.innerHTML = sectorStores.map(store => {
+    const kpiHTML = boutiqueDisplayList.map(item => {
+      const weekly = globalData.weeklyPersonal?.[store]?.[item] || 0;
+      const obj    = globalData.boutiqueInitial?.[store]?.[item] || 0;
+      const pct    = obj > 0 ? Math.min((weekly / obj) * 100, 100) : 0;
+      const pctFull = obj > 0 ? (weekly / obj) * 100 : 0;
+      let bg = "#ff7a00", tc = "#ff7a00", gc = "";
+      if(pctFull >= 120){ bg = "#1e7e34"; tc = "#1e7e34"; gc = "glow"; }
+      else if(pctFull >= 100){ bg = "#66cc88"; tc = "#66cc88"; }
+      return `
+        <div class="store-progress-row ${gc}" style="background:${bg};padding:6px 8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+            <div style="font-size:11px;font-weight:700;">${item}</div>
+            <div style="font-size:10px;font-weight:600;">S : ${weekly}${obj > 0 ? `/${obj}` : ""}</div>
+          </div>
+          <div class="store-progress-container" style="height:10px;">
+            <div class="store-progress-bar" style="width:${pct}%;"></div>
+            <div class="store-progress-text" style="color:${tc};font-size:9px;">${obj > 0 ? pctFull.toFixed(0)+"%" : "—"}</div>
+          </div>
+        </div>`;
+    }).join("");
+
+    return `
+      <div style="margin-top:12px;">
+        <div style="font-size:12px;font-weight:700;color:#ff7a00;margin-bottom:6px;letter-spacing:0.5px;">📍 ${store}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+          ${kpiHTML}
         </div>
       </div>`;
   }).join("");
