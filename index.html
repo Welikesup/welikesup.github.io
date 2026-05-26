@@ -1298,9 +1298,7 @@ function renderStoreTracking(){
   /* Tuile Accessoire */
   const fmt = v => v.toLocaleString("fr-FR", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " €";
   const accWeekly   = globalData.accessoireWeekly?.[storeKey]              || 0;
-  const accObjStore = isManager()
-    ? (globalData.accessoireObjective?.sector?.[currentSector] || 0)
-    : (globalData.accessoireObjective?.store?.[storeKey]       || 0);
+  const accObjStore = globalData.accessoireObjective?.store?.[storeKey]    || 0;
   const accDiff     = accObjStore - accWeekly;
   const accPctFull  = accObjStore > 0 ? (accWeekly / accObjStore) * 100 : 0;
   const accPctBar   = Math.min(accPctFull, 100);
