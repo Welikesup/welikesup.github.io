@@ -1256,13 +1256,16 @@ function renderStoreTracking(){
   const panel   = document.getElementById("storeTrackingPanel");
   const title   = document.getElementById("storeTrackingTitle");
   const content = document.getElementById("storeTrackingContent");
-  if(!panel || !title || !content || !currentStore) return;
-  panel.classList.remove("hidden");
-  title.textContent = `Suivi boutique — ${currentStore}`;
+  if(!panel || !title || !content) return;
 
-  const storeObjectives = globalData.boutiqueObjectives?.[currentStore] || {};
-  const storeInitial    = globalData.boutiqueInitial?.[currentStore]    || {};
-  const storeProgress   = globalData.boutiqueProgress?.[currentStore]   || {};
+  const storeKey = currentStore || currentUser;
+  if(!storeKey) return;
+
+  panel.classList.remove("hidden");
+  title.textContent = `Suivi boutique — ${storeKey}`;
+
+  const storeInitial  = globalData.boutiqueInitial?.[storeKey]  || {};
+  const storeProgress = globalData.boutiqueProgress?.[storeKey] || {};
 
   content.innerHTML = boutiqueDisplayList.map(item => {
     const initial   = storeInitial[item] ?? 0;
@@ -1291,6 +1294,34 @@ function renderStoreTracking(){
         </div>
       </div>`;
   }).join("");
+
+  /* Tuile Accessoire */
+  const fmt = v => v.toLocaleString("fr-FR", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " €";
+  const accWeekly  = globalData.accessoireWeekly?.[currentStore]   || 0;
+  const accObjStore = globalData.accessoireObjective?.store?.[currentStore] || 0;
+  const accDiff     = accObjStore - accWeekly;
+  const accPctFull  = accObjStore > 0 ? (accWeekly / accObjStore) * 100 : 0;
+  const accPctBar   = Math.min(accPctFull, 100);
+
+  let accBg = "#ff7a00", accTc = "#ff7a00", accClass = "";
+  if(accPctFull >= 120){ accBg = "#1e7e34"; accTc = "#1e7e34"; accClass = "glow"; }
+  else if(accPctFull >= 100){ accBg = "#66cc88"; accTc = "#66cc88"; }
+
+  const accMeta = accObjStore > 0
+    ? (accDiff >= 0 ? `Reste : ${fmt(accDiff)} • ${fmt(accWeekly)}/${fmt(accObjStore)}` : `Dépassé : ${fmt(-accDiff)} • ${fmt(accWeekly)}/${fmt(accObjStore)}`)
+    : `Aucun objectif • ${fmt(accWeekly)}`;
+
+  content.innerHTML += `
+    <div class="store-progress-row ${accClass}" style="background:${accBg};">
+      <div class="store-progress-head">
+        <div class="store-progress-title">Accessoire</div>
+        <div class="store-progress-meta">${accMeta}</div>
+      </div>
+      <div class="store-progress-container">
+        <div class="store-progress-bar" style="width:${accPctBar}%;"></div>
+        <div class="store-progress-text" style="color:${accTc};">${accObjStore > 0 ? accPctFull.toFixed(0)+"%" : "0%"}</div>
+      </div>
+    </div>`;
 }
 
 /* =====================================================================
