@@ -1297,8 +1297,10 @@ function renderStoreTracking(){
 
   /* Tuile Accessoire */
   const fmt = v => v.toLocaleString("fr-FR", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " €";
-  const accWeekly   = globalData.accessoireWeekly?.[storeKey]            || 0;
-  const accObjStore = globalData.accessoireObjective?.store?.[storeKey]  || 0;
+  const accWeekly   = globalData.accessoireWeekly?.[storeKey]              || 0;
+  const accObjStore = isManager()
+    ? (globalData.accessoireObjective?.sector?.[currentSector] || 0)
+    : (globalData.accessoireObjective?.store?.[storeKey]       || 0);
   const accDiff     = accObjStore - accWeekly;
   const accPctFull  = accObjStore > 0 ? (accWeekly / accObjStore) * 100 : 0;
   const accPctBar   = Math.min(accPctFull, 100);
@@ -1402,6 +1404,34 @@ function renderGlobalSummary(){
   }).join("");
 
   renderBoutiquesSemaine();
+
+  /* Accessoire global S1+S2 */
+  const accContent = document.getElementById("globalSummaryContent");
+  if(!accContent) return;
+  const fmt = v => v.toLocaleString("fr-FR", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " €";
+  let accWeeklyTotal = 0, accObjTotal = 0;
+  Object.keys(sectors).forEach(sk => {
+    sectors[sk].stores.forEach(s => { accWeeklyTotal += globalData.accessoireWeekly?.[s] || 0; });
+    accObjTotal += globalData.accessoireObjective?.sector?.[sk] || 0;
+  });
+  const accPct = accObjTotal > 0 ? Math.min((accWeeklyTotal / accObjTotal) * 100, 100) : 0;
+  const accPctFull = accObjTotal > 0 ? (accWeeklyTotal / accObjTotal) * 100 : 0;
+  let accBg = "#ff7a00", accTc = "#ff7a00", accGc = "";
+  if(accPctFull >= 120){ accBg = "#1e7e34"; accTc = "#1e7e34"; accGc = "glow"; }
+  else if(accPctFull >= 100){ accBg = "#66cc88"; accTc = "#66cc88"; }
+  accContent.innerHTML += `
+    <div class="store-progress-row ${accGc}" style="background:${accBg};padding:8px 10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div style="font-size:12px;font-weight:700;">Accessoire</div>
+        <div style="font-size:10px;font-weight:600;text-align:right;">
+          S : ${fmt(accWeeklyTotal)}${accObjTotal > 0 ? `/${fmt(accObjTotal)}` : ""}
+        </div>
+      </div>
+      <div class="store-progress-container">
+        <div class="store-progress-bar" style="width:${accPct}%;"></div>
+        <div class="store-progress-text" style="color:${accTc};">${accObjTotal > 0 ? accPctFull.toFixed(0)+"%" : "—"}</div>
+      </div>
+    </div>`;
 }
 
 function renderBoutiquesSemaine(){
@@ -1966,7 +1996,7 @@ function renderAccessoireTile(){
   if(isAdmin()){
     objective = globalData.accessoireObjective?.sector?.[currentSector] || 0;
   } else if(isManager()){
-    objective = globalData.accessoireObjective?.store?.[currentStore] || 0;
+    objective = globalData.accessoireObjective?.sector?.[currentSector] || 0;
   } else if(isDirector()){
     Object.keys(sectors).forEach(sk => {
       objective += globalData.accessoireObjective?.sector?.[sk] || 0;
