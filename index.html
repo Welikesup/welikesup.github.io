@@ -1297,8 +1297,8 @@ function renderStoreTracking(){
 
   /* Tuile Accessoire */
   const fmt = v => v.toLocaleString("fr-FR", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " €";
-  const accWeekly  = globalData.accessoireWeekly?.[currentStore]   || 0;
-  const accObjStore = globalData.accessoireObjective?.store?.[currentStore] || 0;
+  const accWeekly   = globalData.accessoireWeekly?.[storeKey]            || 0;
+  const accObjStore = globalData.accessoireObjective?.store?.[storeKey]  || 0;
   const accDiff     = accObjStore - accWeekly;
   const accPctFull  = accObjStore > 0 ? (accWeekly / accObjStore) * 100 : 0;
   const accPctBar   = Math.min(accPctFull, 100);
@@ -2487,11 +2487,25 @@ window.resetWeekly = async function(){
         itemsList.forEach(item => newWP[store][item] = 0);
       });
 
+      /* Reset accessoire weekly et objectif pour les boutiques du secteur */
+      const cAW = data.accessoireWeekly || {};
+      const cAO = data.accessoireObjective || { sector:{}, store:{} };
+      const newAW = { ...cAW };
+      sectors[currentSector].stores.forEach(store => { newAW[store] = 0; });
+      const newAO = {
+        ...cAO,
+        sector: { ...(cAO.sector||{}), [currentSector]: 0 },
+        store: { ...(cAO.store||{}) }
+      };
+      sectors[currentSector].stores.forEach(store => { newAO.store[store] = 0; });
+
       transaction.set(ref, {
-        sectorTotals:       newST,
-        weeklySectorTotals: newWST,
-        sectorInitial:      newSI,
-        weeklyPersonal:     newWP
+        sectorTotals:        newST,
+        weeklySectorTotals:  newWST,
+        sectorInitial:       newSI,
+        weeklyPersonal:      newWP,
+        accessoireWeekly:    newAW,
+        accessoireObjective: newAO
       }, { merge:true });
     });
     return;
