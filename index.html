@@ -1432,11 +1432,32 @@ function renderBoutiquesSemaine(){
         </div>`;
     }).join("");
 
+    /* Accessoire boutique */
+    const fmt = v => v.toLocaleString("fr-FR", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " €";
+    const accW = globalData.accessoireWeekly?.[store] || 0;
+    const accO = globalData.accessoireObjective?.store?.[store] || 0;
+    const accPct = accO > 0 ? Math.min((accW / accO) * 100, 100) : 0;
+    const accPctFull = accO > 0 ? (accW / accO) * 100 : 0;
+    let accBg = "#ff7a00", accTc = "#ff7a00", accGc = "";
+    if(accPctFull >= 120){ accBg = "#1e7e34"; accTc = "#1e7e34"; accGc = "glow"; }
+    else if(accPctFull >= 100){ accBg = "#66cc88"; accTc = "#66cc88"; }
+    const accHTML = `
+      <div class="store-progress-row ${accGc}" style="background:${accBg};padding:6px 8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <div style="font-size:11px;font-weight:700;">Accessoire</div>
+          <div style="font-size:10px;font-weight:600;">S : ${fmt(accW)}${accO > 0 ? `/${fmt(accO)}` : ""}</div>
+        </div>
+        <div class="store-progress-container" style="height:10px;">
+          <div class="store-progress-bar" style="width:${accPct}%;"></div>
+          <div class="store-progress-text" style="color:${accTc};font-size:9px;">${accO > 0 ? accPctFull.toFixed(0)+"%" : "—"}</div>
+        </div>
+      </div>`;
+
     return `
       <div style="margin-top:12px;">
         <div style="font-size:12px;font-weight:700;color:#ff7a00;margin-bottom:6px;letter-spacing:0.5px;">📍 ${store}</div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
-          ${kpiHTML}
+          ${kpiHTML}${accHTML}
         </div>
       </div>`;
   }).join("");
@@ -2520,6 +2541,8 @@ window.resetWeekly = async function(){
       const cBO = data.boutiqueObjectives || {};
       const cBI = data.boutiqueInitial    || {};
       const cBP = data.boutiqueProgress   || {};
+      const cAW = data.accessoireWeekly   || {};
+      const cAO = data.accessoireObjective || { sector:{}, store:{} };
 
       const resetObj  = { ...(cBO[currentStore] || {}) };
       const resetInit = { ...(cBI[currentStore] || {}) };
@@ -2532,9 +2555,11 @@ window.resetWeekly = async function(){
       });
 
       transaction.set(ref, {
-        boutiqueObjectives: { ...cBO, [currentStore]: resetObj },
-        boutiqueInitial:    { ...cBI, [currentStore]: resetInit },
-        boutiqueProgress:   { ...cBP, [currentStore]: resetProg }
+        boutiqueObjectives:  { ...cBO, [currentStore]: resetObj },
+        boutiqueInitial:     { ...cBI, [currentStore]: resetInit },
+        boutiqueProgress:    { ...cBP, [currentStore]: resetProg },
+        accessoireWeekly:    { ...cAW, [currentStore]: 0 },
+        accessoireObjective: { ...cAO, store: { ...(cAO.store||{}), [currentStore]: 0 } }
       }, { merge:true });
     });
   }
