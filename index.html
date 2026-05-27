@@ -1862,8 +1862,9 @@ window.storeModalConfirm = function(){
     qty = parseFloat(document.getElementById("storeModalQty").value.replace(",","."));
     if(isNaN(qty) || qty <= 0){ alert("Valeur invalide."); return; }
   }
+  const cb = _modalCallback;
   storeModalClose();
-  if(_modalCallback) _modalCallback(store, qty);
+  if(cb) cb(store, qty);
 };
 
 window.storeModalClose = function(){
