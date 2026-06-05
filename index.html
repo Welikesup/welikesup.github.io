@@ -1032,9 +1032,10 @@ async function initData(){
       renderCercle();
     } else {
       display();
-      renderAccessoireTile();
       if(isAdmin() || isManager()){
-        if(!adminRendered){ renderAdmin(); adminRendered = true; }
+        const activeEl = document.activeElement;
+        const inputFocused = activeEl && activeEl.closest && activeEl.closest("#adminInputs");
+        if(!adminRendered || !inputFocused){ renderAdmin(); adminRendered = true; }
         renderRanking();
       }
       if(isStore() && sectors["secteur2"].stores.includes(currentUser)){
@@ -1247,6 +1248,11 @@ function display(){
   });
 
   previousLeaderKeys = nextLeaderKeys;
+
+  /* Tuile Accessoire — toujours recréée avec les autres tuiles */
+  const existingAcc = document.getElementById("accessoireTile");
+  if(existingAcc) existingAcc.remove();
+  renderAccessoireTile();
 }
 
 /* =====================================================================
@@ -2447,7 +2453,8 @@ window.saveObjectives = async function(){
     const currentSectorInitial = globalData.sectorInitial || {};
     const updatedSectorInitial = { ...(currentSectorInitial[currentSector] || {}) };
     const cAO = globalData.accessoireObjective || { sector:{}, store:{} };
-    const accVal = parseFloat(document.getElementById("obj-accessoire-sector")?.value) || 0;
+    const accSectorInput = document.getElementById("obj-accessoire-sector");
+    const accVal = accSectorInput ? (parseFloat(accSectorInput.value) || 0) : (globalData.accessoireObjective?.sector?.[currentSector] || 0);
 
     boutiqueDisplayList.forEach(item => {
       const val = parseInt(document.getElementById("obj-" + item).value) || 0;
@@ -2466,7 +2473,8 @@ window.saveObjectives = async function(){
     const cBI = globalData.boutiqueInitial    || {};
     const cBP = globalData.boutiqueProgress   || {};
     const cAO = globalData.accessoireObjective || { sector:{}, store:{} };
-    const accVal = parseFloat(document.getElementById("obj-accessoire-store")?.value) || 0;
+    const accInput = document.getElementById("obj-accessoire-store");
+    const accVal = accInput ? (parseFloat(accInput.value) || 0) : (globalData.accessoireObjective?.store?.[currentStore] || 0);
 
     const updatedObj  = { ...(cBO[currentStore] || {}) };
     const updatedInit = { ...(cBI[currentStore] || {}) };
