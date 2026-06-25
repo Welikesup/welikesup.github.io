@@ -2545,25 +2545,17 @@ window.resetWeekly = async function(){
         itemsList.forEach(item => newWP[store][item] = 0);
       });
 
-      /* Reset accessoire weekly et objectif pour les boutiques du secteur */
+      /* Reset accessoire weekly (ventes) — on GARDE les objectifs */
       const cAW = data.accessoireWeekly || {};
-      const cAO = data.accessoireObjective || { sector:{}, store:{} };
       const newAW = { ...cAW };
       sectors[currentSector].stores.forEach(store => { newAW[store] = 0; });
-      const newAO = {
-        ...cAO,
-        sector: { ...(cAO.sector||{}), [currentSector]: 0 },
-        store: { ...(cAO.store||{}) }
-      };
-      sectors[currentSector].stores.forEach(store => { newAO.store[store] = 0; });
 
       transaction.set(ref, {
         sectorTotals:        newST,
         weeklySectorTotals:  newWST,
         sectorInitial:       newSI,
         weeklyPersonal:      newWP,
-        accessoireWeekly:    newAW,
-        accessoireObjective: newAO
+        accessoireWeekly:    newAW
       }, { merge:true });
     });
     return;
@@ -2579,7 +2571,6 @@ window.resetWeekly = async function(){
       const cBI = data.boutiqueInitial    || {};
       const cBP = data.boutiqueProgress   || {};
       const cAW = data.accessoireWeekly   || {};
-      const cAO = data.accessoireObjective || { sector:{}, store:{} };
 
       const resetObj  = { ...(cBO[currentStore] || {}) };
       const resetInit = { ...(cBI[currentStore] || {}) };
@@ -2595,8 +2586,7 @@ window.resetWeekly = async function(){
         boutiqueObjectives:  { ...cBO, [currentStore]: resetObj },
         boutiqueInitial:     { ...cBI, [currentStore]: resetInit },
         boutiqueProgress:    { ...cBP, [currentStore]: resetProg },
-        accessoireWeekly:    { ...cAW, [currentStore]: 0 },
-        accessoireObjective: { ...cAO, store: { ...(cAO.store||{}), [currentStore]: 0 } }
+        accessoireWeekly:    { ...cAW, [currentStore]: 0 }
       }, { merge:true });
     });
   }
