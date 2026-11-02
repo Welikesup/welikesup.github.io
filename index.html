@@ -456,7 +456,7 @@ button.catchup{background:#444;color:#ffd700;margin-left:8px;}
 
     <div class="director-grid">
       <div class="director-sector">
-        <h2>⚡ Secteur Terres Normandes — Mariama</h2>
+        <h2>⚡ Secteur Terres Normandes — Julien</h2>
         <div id="directorRanking1" style="margin-bottom:16px;"></div>
         <div id="directorKpi1" class="director-kpi-grid"></div>
         <div id="directorAcc1" style="margin-top:8px;"></div>
@@ -499,7 +499,7 @@ const ref = doc(db,"global","objectifs");
 const sectors = {
   "secteur1": {
     label: "Secteur Terres Normandes",
-    admin: "Mariama",
+    admin: "Julien",
     stores: ["Le Havre","Evreux","Mondeville","Caen","La Glacerie","Rouen"]
   },
   "secteur2": {
@@ -514,7 +514,7 @@ const allStoreUsers = [
   "Orléans","Chartres","Tours","Châteauroux","Blois"
 ];
 
-const allAdmins = ["Mariama","Julien"];
+const allAdmins = ["Julien","Julien"];
 const allUsers = [...allStoreUsers, ...allAdmins];
 
 const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Autre"];
@@ -532,7 +532,7 @@ const boutiqueDisplayList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assu
      1fdfb74... = Caen (store)
      aecfc16... = La Glacerie (store)
      68521fc... = Rouen (store)
-     014dbcb... = Mariama (admin secteur1)
+     014dbcb... = Julien (admin secteur1)
      615ab1a... = Manager Le Havre
      a875f35... = Manager Evreux
      8fa15eb... = Manager Mondeville
@@ -564,7 +564,7 @@ const accounts = {
   "1fdfb74477e81470d893db1862fbe6e13541ed6c4af7dc4bcd69d937adb4a4b5": { name:"Caen",        role:"store",   sector:"secteur1", store:"Caen" },
   "aecfc167335c1252cb0f17429f02bc728aeb76de696050e0df03c5a0a512bf45": { name:"La Glacerie", role:"store",   sector:"secteur1", store:"La Glacerie" },
   "68521fc55ffa717c695ede130a105c51a0222fc6b7961b4a608addbca974229d": { name:"Rouen",       role:"store",   sector:"secteur1", store:"Rouen" },
-  "014dbcb988488832f44b00a9ca5c716b6db105b7d766a1c5344d8fe3be8b5067": { name:"Mariama",     role:"admin",   sector:"secteur1", store:null },
+  "014dbcb988488832f44b00a9ca5c716b6db105b7d766a1c5344d8fe3be8b5067": { name:"Julien",     role:"admin",   sector:"secteur1", store:null },
   "615ab1a5cc9a1f4c83c47069d81d434994a8f2192d797af4f591b27d622b9cd9": { name:"Manager Le Havre",   role:"manager", sector:"secteur1", store:"Le Havre" },
   "a875f3510cbf54ff5d7d5c03a0586304c3586b2843093b62043298a0d872aae5": { name:"Manager Evreux",      role:"manager", sector:"secteur1", store:"Evreux" },
   "8fa15ebbbad0cb023c171c394a52ab25dcb860e22fbb87a8d84aa5f9fc042e9c": { name:"Manager Mondeville",  role:"manager", sector:"secteur1", store:"Mondeville" },
