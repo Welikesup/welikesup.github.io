@@ -1552,6 +1552,7 @@ function renderDirectorSummary(){
 
 function renderDirector(){
   renderDirectorSummary();
+  const maxStores = Math.max(...Object.values(sectors).map(sec => sec.stores.length));
   Object.keys(sectors).forEach((sk, idx) => {
     const num = idx + 1;
     const sectorStores = sectors[sk].stores;
@@ -1582,7 +1583,7 @@ function renderDirector(){
               </div>
               <div class="ranking-score">${row.total}</div>
             </div>`;
-        }).join("");
+        }).join("") + `<div class="ranking-row" style="visibility:hidden;"><div class="ranking-left"><div class="ranking-rank">0</div><div class="ranking-name">0</div></div><div class="ranking-score">0</div></div>`.repeat(maxStores - sectorStores.length);
       }
     }
 
