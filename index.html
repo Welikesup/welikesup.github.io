@@ -517,10 +517,13 @@ const allStoreUsers = [
 const allAdmins = ["Julien","Julien"];
 const allUsers = [...allStoreUsers, ...allAdmins];
 
-const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Autre"];
+const itemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Avis Google","Autre"];
+/* Tuiles exclues du classement du jour et du taux de transformation */
+const itemsExcludedFromDaily = ["Avis Google"];
+const itemsForDaily = itemsList.filter(i => !itemsExcludedFromDaily.includes(i));
 const itemsWithoutObjective = ["Autre"];
-const managerItemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Autre"];
-const boutiqueDisplayList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros"];
+const managerItemsList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Avis Google","Autre"];
+const boutiqueDisplayList = ["Broadband","Socle Mobiles","MEV","Terminaux","Assurances","Cyber","MP","Pros","Avis Google"];
 
 /* =====================================================================
    COMPTES
@@ -1061,7 +1064,7 @@ function renderRanking(){
 
   const rankingData = sectorStores.map(name => {
     let total = 0;
-    itemsList.forEach(item => total += globalData.personal?.[name]?.[item] || 0);
+    itemsForDaily.forEach(item => total += globalData.personal?.[name]?.[item] || 0);
     return { name, total };
   });
 
@@ -1339,7 +1342,7 @@ function renderTx(){
   if(!panel || !content || !currentStore) return;
 
   let todayTotal = 0;
-  managerItemsList.forEach(item => todayTotal += globalData.personal?.[currentStore]?.[item] || 0);
+  managerItemsList.filter(i => !itemsExcludedFromDaily.includes(i)).forEach(item => todayTotal += globalData.personal?.[currentStore]?.[item] || 0);
 
   const objective   = globalData.dailyObjective?.[currentStore] || 0;
   const diff        = objective - todayTotal;
@@ -1544,7 +1547,7 @@ function renderDirector(){
     /* Classement */
     const rankingData = sectorStores.map(name => {
       let total = 0;
-      itemsList.forEach(item => total += globalData.personal?.[name]?.[item] || 0);
+      itemsForDaily.forEach(item => total += globalData.personal?.[name]?.[item] || 0);
       return { name, total };
     }).sort((a,b) => b.total - a.total);
 
