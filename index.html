@@ -1548,6 +1548,32 @@ function renderDirectorSummary(){
         </div>
       </div>`;
   }).join("");
+
+  /* Accessoire global (tous secteurs) */
+  const fmt = v => v.toLocaleString("fr-FR", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " €";
+  let accWeeklyTotal = 0, accObjTotal = 0;
+  Object.keys(sectors).forEach(sk => {
+    sectors[sk].stores.forEach(s => { accWeeklyTotal += globalData.accessoireWeekly?.[s] || 0; });
+    accObjTotal += globalData.accessoireObjective?.sector?.[sk] || 0;
+  });
+  const accPct = accObjTotal > 0 ? Math.min((accWeeklyTotal / accObjTotal) * 100, 100) : 0;
+  const accPctFull = accObjTotal > 0 ? (accWeeklyTotal / accObjTotal) * 100 : 0;
+  let accBg = "#ff7a00", accTc = "#ff7a00", accGc = "";
+  if(accPctFull >= 120){ accBg = "#1e7e34"; accTc = "#1e7e34"; accGc = "glow"; }
+  else if(accPctFull >= 100){ accBg = "#66cc88"; accTc = "#66cc88"; }
+  summaryEl.innerHTML += `
+    <div class="store-progress-row ${accGc}" style="background:${accBg};padding:8px 10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:2px 8px;margin-bottom:4px;">
+        <div style="font-size:12px;font-weight:700;">Accessoire</div>
+        <div style="font-size:10px;font-weight:600;text-align:right;">
+          S : ${fmt(accWeeklyTotal)}${accObjTotal > 0 ? `/${fmt(accObjTotal)}` : ""}
+        </div>
+      </div>
+      <div class="store-progress-container">
+        <div class="store-progress-bar" style="width:${accPct}%;"></div>
+        <div class="store-progress-text" style="color:${accTc};">${accObjTotal > 0 ? accPctFull.toFixed(0)+"%" : "—"}</div>
+      </div>
+    </div>`;
 }
 
 function renderDirector(){
